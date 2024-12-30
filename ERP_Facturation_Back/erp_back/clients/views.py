@@ -6,7 +6,8 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.exceptions import AuthenticationFailed
 from datetime import datetime
 from rest_framework.response import Response
-from .serializers import clientSerializer
+from .serializers import clientSerializer, paysSerializer
+from .models import Pays
 
 @api_view(['POST'])
 def get_clients(request):
@@ -39,3 +40,10 @@ def delete_client(request):
 @api_view(['POST'])
 def modify_client(request):
   pass
+
+@api_view(['GET'])
+def get_pays(request):
+  pays = Pays.objects.all()
+  serializer = paysSerializer(pays, many=True)
+
+  return Response(serializer.data)

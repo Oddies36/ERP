@@ -9,9 +9,11 @@ import {
   AppBar,
   Toolbar,
 } from "@mui/material";
-import Grid from '@mui/material/Grid2';
+import Grid from "@mui/material/Grid2";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axiosConfig";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 const NewClient = () => {
   const [client, setClient] = useState({
@@ -21,39 +23,69 @@ const NewClient = () => {
     email: "",
     nom_entreprise: "",
     tva_entreprise: "",
-    rue: "",
-    numero: "",
-    boite: "",
-    cp: "",
-    ville: "",
-    pays: "",
-    type_adresse: "",
+    rue_livraison: "",
+    numero_livraison: "",
+    boite_livraison: "",
+    cp_livraison: "",
+    ville_livraison: "",
+    pays_livraison: "",
+    rue_facturation: "",
+    numero_facturation: "",
+    boite_facturation: "",
+    cp_facturation: "",
+    ville_facturation: "",
+    pays_facturation: "",
+    same_address: "",
   });
 
-  const [paysOptions, setPaysOptions] = useState([]);
-  const [typeAdresseOptions, setTypeAdresseOptions] = useState([]);
+  const [listePays, setListePays] = useState([]);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [sameAddress, setSameAddress] = useState(false);
 
   useEffect(() => {
-    const fetchOptions = async () => {
+    const getPays = async () => {
       try {
-        const [paysResponse, typeAdresseResponse] = await Promise.all([
-          api.get("/pays/"),
-          api.get("/type-adresse/"),
-        ]);
-        setPaysOptions(paysResponse.data);
-        setTypeAdresseOptions(typeAdresseResponse.data);
+        const responsePays = await api.get("/clients/get-pays/");
+        setListePays(responsePays.data);
       } catch (err) {
-        setError("Failed to fetch dropdown options.");
+        setError("Erreur lors de la récuperation des pays.");
       }
     };
-    fetchOptions();
+    getPays();
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setClient({ ...client, [name]: value });
+  };
+
+  const handleSwitch = (e) => {
+    if (e.target.checked) {
+      setSameAddress(true);
+      setClient((prevClient) => ({
+        ...prevClient,
+        same_address: true,
+      }));
+
+      setClient((prevClient) => ({
+        ...prevClient,
+        rue_facturation: prevClient.rue_livraison,
+        numero_facturation: prevClient.numero_livraison,
+        boite_facturation: prevClient.boite_livraison,
+        cp_facturation: prevClient.cp_livraison,
+        ville_facturation: prevClient.ville_livraison,
+        pays_facturation: prevClient.pays_livraison,
+      }));
+
+      console.log(client.rue_facturation);
+    } else {
+      setSameAddress(false);
+      setClient((prevClient) => ({
+        ...prevClient,
+        same_address: false,
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -81,7 +113,7 @@ const NewClient = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
           Ajouter un client
         </Typography>
@@ -95,7 +127,7 @@ const NewClient = () => {
         <form onSubmit={handleSubmit}>
           <Grid container spacing={4}>
             {/* Client Information */}
-            <Grid size={{xs: 12, md: 4}}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Informations du client
               </Typography>
@@ -154,15 +186,15 @@ const NewClient = () => {
             </Grid>
 
             {/* Address Information */}
-            <Grid size={{xs: 12, md: 4}}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Adresse de livraison
               </Typography>
               <TextField
                 fullWidth
                 label="Rue"
-                name="rue"
-                value={client.rue}
+                name="rue_livraison"
+                value={client.rue_livraison}
                 onChange={handleChange}
                 required
                 sx={{ mb: 1 }}
@@ -170,8 +202,8 @@ const NewClient = () => {
               <TextField
                 fullWidth
                 label="Numéro"
-                name="numero"
-                value={client.numero}
+                name="numero_livraison"
+                value={client.numero_livraison}
                 onChange={handleChange}
                 required
                 sx={{ mb: 1 }}
@@ -179,16 +211,16 @@ const NewClient = () => {
               <TextField
                 fullWidth
                 label="Boîte"
-                name="boite"
-                value={client.boite}
+                name="boite_livraison"
+                value={client.boite_livraison}
                 onChange={handleChange}
                 sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
                 label="Code Postal"
-                name="cp"
-                value={client.cp}
+                name="cp_livraison"
+                value={client.cp_livraison}
                 onChange={handleChange}
                 required
                 sx={{ mb: 1 }}
@@ -196,8 +228,8 @@ const NewClient = () => {
               <TextField
                 fullWidth
                 label="Ville"
-                name="ville"
-                value={client.ville}
+                name="ville_livraison"
+                value={client.ville_livraison}
                 onChange={handleChange}
                 required
                 sx={{ mb: 1 }}
@@ -206,89 +238,105 @@ const NewClient = () => {
                 select
                 fullWidth
                 label="Pays"
-                name="pays"
-                value={client.pays}
+                name="pays_livraison"
+                value={client.pays_livraison}
                 onChange={handleChange}
                 required
                 sx={{ mb: 1 }}
               >
-                {paysOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
+                {listePays.map((option) => (
+                  <MenuItem key={`livraison-${option.id}`} value={option.id}>
                     {option.pays}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
 
-            <Grid size={{xs: 12, md: 4}}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Adresse de facturation
               </Typography>
               <TextField
                 fullWidth
                 label="Rue"
-                name="rue"
-                value={client.rue}
+                name="rue_facturation"
+                value={client.rue_facturation}
                 onChange={handleChange}
                 required
+                disabled={sameAddress}
                 sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
                 label="Numéro"
-                name="numero"
-                value={client.numero}
+                name="numero_facturation"
+                value={client.numero_facturation}
                 onChange={handleChange}
                 required
+                disabled={sameAddress}
                 sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
                 label="Boîte"
-                name="boite"
-                value={client.boite}
+                name="boite_facturation"
+                value={client.boite_facturation}
                 onChange={handleChange}
+                disabled={sameAddress}
                 sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
                 label="Code Postal"
-                name="cp"
-                value={client.cp}
+                name="cp_facturation"
+                value={client.cp_facturation}
                 onChange={handleChange}
                 required
+                disabled={sameAddress}
                 sx={{ mb: 1 }}
               />
               <TextField
                 fullWidth
                 label="Ville"
-                name="ville"
-                value={client.ville}
+                name="ville_facturation"
+                value={client.ville_facturation}
                 onChange={handleChange}
                 required
+                disabled={sameAddress}
                 sx={{ mb: 1 }}
               />
               <TextField
                 select
                 fullWidth
                 label="Pays"
-                name="pays"
-                value={client.pays}
+                name="pays_facturation"
+                value={client.pays_facturation}
                 onChange={handleChange}
                 required
+                disabled={sameAddress}
                 sx={{ mb: 3 }}
               >
-                {paysOptions.map((option) => (
-                  <MenuItem key={option.id} value={option.id}>
+                {listePays.map((option) => (
+                  <MenuItem key={`facturation-${option.id}`} value={option.id}>
                     {option.pays}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
           </Grid>
+          <FormControlLabel
+            sx={{ mb: 3 }}
+            control={<Switch checked={sameAddress} onChange={handleSwitch} />}
+            label="L'adresse de facturation est la même que l'adresse de livraison"
+          />
 
           {/* Submit Button */}
-          <Button type="submit" variant="contained" fullWidth>
+          <Button
+            type="submit"
+            variant="contained"
+            fullWidth
+            sx={{ padding: "15px 30px" }}
+          >
             Créer le client
           </Button>
         </form>
