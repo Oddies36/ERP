@@ -8,6 +8,7 @@ import {
   Toolbar,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
+import { Link } from 'react-router-dom';
 
 const Homepage = () => {
   const handleNavigation = (path) => {
@@ -49,8 +50,9 @@ const Homepage = () => {
                 Ajouter, modifier ou supprimer des clients
               </Typography>
               <Button
+                component={Link}
+                to="/client-list"
                 variant="contained"
-                onClick={() => handleNavigation("/clients")}
               >
                 Gestion des clients
               </Button>

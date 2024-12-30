@@ -6,11 +6,11 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.exceptions import AuthenticationFailed
 from datetime import datetime
 from rest_framework.response import Response
-from .serializers import ClientSerializer
+from .serializers import clientSerializer
 
 @api_view(['POST'])
 def get_clients(request):
-  serializer = UserSerializer(data=request.data)
+  serializer = clientSerializer(data=request.data)
 
   if serializer.is_valid():
     serializer.save()

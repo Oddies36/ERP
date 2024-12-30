@@ -29,7 +29,7 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const response = await api.post("users/login/", {
+      const response = await api.post("/api/token/", {
         username: credentials.username,
         password: credentials.password,
       });
