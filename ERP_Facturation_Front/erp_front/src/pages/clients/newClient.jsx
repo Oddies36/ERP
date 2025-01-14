@@ -10,10 +10,14 @@ import {
   Toolbar,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import api from "../../api/axiosConfig";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import HomeIcon from '@mui/icons-material/Home';
+import PersonSearchIcon from '@mui/icons-material/PersonSearch';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 
 const NewClient = () => {
   const [client, setClient] = useState({
@@ -88,6 +92,10 @@ const NewClient = () => {
     }
   };
 
+  const handleNavigation = (path) => {
+    console.log(`Navigating to ${path}`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -101,17 +109,133 @@ const NewClient = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
+    <Box>
+      {/* Top Bar */}
+      <AppBar position="static"
+      sx={{
+        backgroundImage: "url(/images/appbar.jpg)",
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+  }}>
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
             ERP Facturation
           </Typography>
-          <Button color="inherit" onClick={() => navigate("/clients")}>
-            Retour à la liste des clients
+          <Button color="inherit" onClick={() => handleNavigation("/logout")}>
+            Déconnexion
           </Button>
         </Toolbar>
       </AppBar>
+
+      {/* Main Content */}
+      <Box display="flex" sx={{ height: "calc(100vh - 64px)" }}>
+        {/* Sidebar */}
+        <Box
+          sx={{
+            width: "250px",
+            backgroundColor: "#1722C9",
+            color: "#fff",
+            
+          }}
+        >
+          <Box>
+            
+            <Box
+              component={NavLink}
+              to="/home"
+              sx={{
+                color: "#fff",
+                width: "100%",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                marginTop: 5,
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "#5ea5e5"
+                },
+                "&.active": {
+                  backgroundColor: "#1976d2"
+                }
+              }}
+           >   
+              <HomeIcon sx={{ marginRight: 1, marginLeft: 2 }} />
+              <Typography variant="body1" sx={{ color: "inherit" }}>
+                Page d'accueil
+              </Typography>
+            </Box>
+            <Box
+              component={NavLink}
+              to="/clients"
+              sx={{
+                color: "#fff",
+                width: "100%",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "#5ea5e5"
+                },
+                "&.active": {
+                  backgroundColor: "#1976d2"
+                }
+              }}
+           >   
+              <PersonSearchIcon sx={{ marginRight: 1, marginLeft: 2 }} />
+              <Typography variant="body1" sx={{ color: "inherit" }}>
+                Clients
+              </Typography>
+            </Box>
+            <Box
+              component={NavLink}
+              to="/"
+              sx={{
+                color: "#fff",
+                width: "100%",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "#5ea5e5"
+                },
+                "&.active": {
+                  backgroundColor: "#1976d2"
+                }
+              }}
+           >   
+              <InventoryIcon sx={{ marginRight: 1, marginLeft: 2 }} />
+              <Typography variant="body1" sx={{ color: "inherit" }}>
+                Articles
+              </Typography>
+            </Box>
+            <Box
+              component={NavLink}
+              to="/"
+              sx={{
+                color: "#fff",
+                width: "100%",
+                height: "50px",
+                display: "flex",
+                alignItems: "center",
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "#5ea5e5"
+                },
+                "&.active": {
+                  backgroundColor: "#1976d2"
+                }
+              }}
+           >   
+              <ReceiptIcon sx={{ marginRight: 1, marginLeft: 2 }} />
+              <Typography variant="body1" sx={{ color: "inherit" }}>
+                Factures
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
 
       <Container sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
@@ -341,6 +465,7 @@ const NewClient = () => {
           </Button>
         </form>
       </Container>
+    </Box>
     </Box>
   );
 };

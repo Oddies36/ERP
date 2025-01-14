@@ -16,8 +16,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/creation-user" element={<NewUser />} />
         <Route path="/home" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
-        <Route path="/client-list" element={<ProtectedRoute><ClientList /></ProtectedRoute>} />
-        <Route path="/creation-client" element={<ProtectedRoute><NewClient /></ProtectedRoute>} />
+        <Route path="/clients" element={<ProtectedRoute><ClientList /></ProtectedRoute>} />
+        <Route path="/clients/nouveau" element={<ProtectedRoute><NewClient /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

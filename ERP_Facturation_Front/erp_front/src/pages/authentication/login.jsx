@@ -42,7 +42,8 @@ const Login = () => {
       navigate("/home");
     } catch (err) {
       console.error("login error: ", err);
-      setError("Login failed");
+      setError("Nom d'utilisateur ou mot de passe incorrecte.");
+      setCredentials({username: "", password: ""});
     }
   };
 
