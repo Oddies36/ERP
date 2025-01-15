@@ -4,20 +4,14 @@ import {
   Typography,
   TextField,
   Button,
-  Box,
   MenuItem,
-  AppBar,
-  Toolbar,
 } from "@mui/material";
 import Grid from "@mui/material/Grid2";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/axiosConfig";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import HomeIcon from '@mui/icons-material/Home';
-import PersonSearchIcon from '@mui/icons-material/PersonSearch';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import ReceiptIcon from '@mui/icons-material/Receipt';
+import Layout from "../../components/layout";
 
 const NewClient = () => {
   const [client, setClient] = useState({
@@ -39,7 +33,7 @@ const NewClient = () => {
     cp_facturation: "",
     ville_facturation: "",
     pays_facturation: "",
-    same_address: "",
+    same_address: ""
   });
 
   const [listePays, setListePays] = useState([]);
@@ -65,41 +59,33 @@ const NewClient = () => {
   };
 
   const handleSwitch = (e) => {
-    if (e.target.checked) {
-      setSameAddress(true);
-      setClient((prevClient) => ({
-        ...prevClient,
-        same_address: true,
-      }));
-
-      setClient((prevClient) => ({
-        ...prevClient,
+    const checked = e.target.checked;
+    setSameAddress(checked);
+  
+    setClient((prevClient) => ({
+      ...prevClient,
+      same_address: checked,
+      ...(checked && {
         rue_facturation: prevClient.rue_livraison,
         numero_facturation: prevClient.numero_livraison,
         boite_facturation: prevClient.boite_livraison,
         cp_facturation: prevClient.cp_livraison,
         ville_facturation: prevClient.ville_livraison,
         pays_facturation: prevClient.pays_livraison,
-      }));
-
-      console.log(client.rue_facturation);
-    } else {
-      setSameAddress(false);
-      setClient((prevClient) => ({
-        ...prevClient,
-        same_address: false,
-      }));
-    }
+      }),
+    }));
   };
 
   const handleNavigation = (path) => {
     console.log(`Navigating to ${path}`);
-  };
+  };  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const dataToSend = transformData(client);
     try {
-      const response = await api.post("/clients/new/", client);
+      const response = await api.post("/clients/new/", dataToSend);
       console.log("Client created:", response.data);
       navigate("/clients");
     } catch (err) {
@@ -108,135 +94,48 @@ const NewClient = () => {
     }
   };
 
+  const transformData = (client) => ({
+    client: {
+      nom: client.nom,
+      prenom: client.prenom,
+      telephone: client.telephone,
+      email: client.email,
+      nom_entreprise: client.nom_entreprise,
+      tva_entreprise: client.tva_entreprise
+    },
+    adresse_livraison: {
+      rue_livraison: client.rue_livraison,
+      numero_livraison: client.numero_livraison,
+      boite_livraison: client.boite_livraison,
+      codepostal_livraison: {
+        cp_livraison: client.cp_livraison,
+        ville_livraison: {
+          ville_livraison: client.ville_livraison,
+          pays_livraison: {
+            pays_livraison: client.pays_livraison
+          }
+        }
+      }
+    },
+    adresse_facturation: {
+      rue_facturation: client.rue_facturation,
+      numero_facturation: client.numero_facturation,
+      boite_facturation: client.boite_facturation,
+      codepostal_facturation: {
+        cp_facturation: client.cp_facturation,
+        ville_facturation: {
+          ville_facturation: client.ville_facturation,
+          pays_facturation: {
+            pays_facturation: client.pays_facturation
+          }
+        }
+      }
+    },
+    same_address: client.same_address
+  });
+
   return (
-    <Box>
-      {/* Top Bar */}
-      <AppBar position="static"
-      sx={{
-        backgroundImage: "url(/images/appbar.jpg)",
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-  }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            ERP Facturation
-          </Typography>
-          <Button color="inherit" onClick={() => handleNavigation("/logout")}>
-            Déconnexion
-          </Button>
-        </Toolbar>
-      </AppBar>
-
-      {/* Main Content */}
-      <Box display="flex" sx={{ height: "calc(100vh - 64px)" }}>
-        {/* Sidebar */}
-        <Box
-          sx={{
-            width: "250px",
-            backgroundColor: "#1722C9",
-            color: "#fff",
-            
-          }}
-        >
-          <Box>
-            
-            <Box
-              component={NavLink}
-              to="/home"
-              sx={{
-                color: "#fff",
-                width: "100%",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                marginTop: 5,
-                textDecoration: "none",
-                "&:hover": {
-                  backgroundColor: "#5ea5e5"
-                },
-                "&.active": {
-                  backgroundColor: "#1976d2"
-                }
-              }}
-           >   
-              <HomeIcon sx={{ marginRight: 1, marginLeft: 2 }} />
-              <Typography variant="body1" sx={{ color: "inherit" }}>
-                Page d'accueil
-              </Typography>
-            </Box>
-            <Box
-              component={NavLink}
-              to="/clients"
-              sx={{
-                color: "#fff",
-                width: "100%",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                textDecoration: "none",
-                "&:hover": {
-                  backgroundColor: "#5ea5e5"
-                },
-                "&.active": {
-                  backgroundColor: "#1976d2"
-                }
-              }}
-           >   
-              <PersonSearchIcon sx={{ marginRight: 1, marginLeft: 2 }} />
-              <Typography variant="body1" sx={{ color: "inherit" }}>
-                Clients
-              </Typography>
-            </Box>
-            <Box
-              component={NavLink}
-              to="/"
-              sx={{
-                color: "#fff",
-                width: "100%",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                textDecoration: "none",
-                "&:hover": {
-                  backgroundColor: "#5ea5e5"
-                },
-                "&.active": {
-                  backgroundColor: "#1976d2"
-                }
-              }}
-           >   
-              <InventoryIcon sx={{ marginRight: 1, marginLeft: 2 }} />
-              <Typography variant="body1" sx={{ color: "inherit" }}>
-                Articles
-              </Typography>
-            </Box>
-            <Box
-              component={NavLink}
-              to="/"
-              sx={{
-                color: "#fff",
-                width: "100%",
-                height: "50px",
-                display: "flex",
-                alignItems: "center",
-                textDecoration: "none",
-                "&:hover": {
-                  backgroundColor: "#5ea5e5"
-                },
-                "&.active": {
-                  backgroundColor: "#1976d2"
-                }
-              }}
-           >   
-              <ReceiptIcon sx={{ marginRight: 1, marginLeft: 2 }} />
-              <Typography variant="body1" sx={{ color: "inherit" }}>
-                Factures
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
+    <Layout>
       <Container sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
           Ajouter un client
@@ -465,8 +364,7 @@ const NewClient = () => {
           </Button>
         </form>
       </Container>
-    </Box>
-    </Box>
+    </Layout>
   );
 };
 
