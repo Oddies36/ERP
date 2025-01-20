@@ -12,27 +12,22 @@ class Code_Postal(models.Model):
     cp = models.CharField(max_length=10)
     ville = models.ForeignKey(Ville, on_delete=models.CASCADE)
 
-class Adresse(models.Model):
-    rue = models.CharField(max_length=255)
-    numero = models.CharField(max_length=10)
-    boite = models.CharField(max_length=10, blank=True)
-    code_postal = models.ForeignKey(Code_Postal, on_delete=models.CASCADE)
-
 class Client(models.Model):
     nom = models.CharField(max_length=255)
     prenom = models.CharField(max_length=255)
     telephone = models.CharField(max_length=30)
     email = models.EmailField()
-    nom_entreprise = models.CharField(max_length=255, blank=True)
-    tva_entreprise = models.CharField(max_length=255, blank=True)
+    nom_entreprise = models.CharField(max_length=255, blank=True, null=True)
+    tva_entreprise = models.CharField(max_length=255, blank=True, null=True)
+
+class Adresse(models.Model):
+    rue = models.CharField(max_length=255)
+    numero = models.CharField(max_length=10)
+    boite = models.CharField(max_length=10, blank=True)
+    code_postal = models.ForeignKey(Code_Postal, on_delete=models.CASCADE)
+    clients = models.ManyToManyField('Client', related_name='adresses')
+
 
 class Type_Adresse(models.Model):
     type_adresse = models.CharField(max_length=50)
-
-class Client_Adresse(models.Model):
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
-    adresse = models.ForeignKey(Adresse, on_delete=models.CASCADE)
-    type_adresse = models.ForeignKey(Type_Adresse, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = [['client', 'adresse', 'type_adresse']]
+    adresses = models.ManyToManyField('Adresse', related_name='type_adresses')

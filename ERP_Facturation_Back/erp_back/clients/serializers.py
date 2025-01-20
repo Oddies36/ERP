@@ -1,10 +1,5 @@
 from rest_framework import serializers
-from .models import Client, Pays, Adresse, Ville, Code_Postal, Type_Adresse, Client_Adresse
-
-class clientSerializer(serializers.Serializer):
-  class Meta:
-    model = Client
-    fields = ['id', 'nom', 'prenom', 'telephone', 'email', 'nom_entreprise', 'tva_entreprise']
+from .models import Client, Pays, Adresse, Ville, Code_Postal, Type_Adresse
 
 class typeAdresseSerializer(serializers.ModelSerializer):
   class Meta:
@@ -14,7 +9,7 @@ class typeAdresseSerializer(serializers.ModelSerializer):
 class paysSerializer(serializers.ModelSerializer):
   class Meta:
     model = Pays
-    fields = ['id', 'pays', 'code_iso']
+    fields = ['id', 'pays']
 
 class villeSerializer(serializers.ModelSerializer):
   pays = paysSerializer()
@@ -31,29 +26,62 @@ class codepostalSerializer(serializers.ModelSerializer):
     fields = ['id', 'ville', 'cp']
 
 class adresseSerializer(serializers.ModelSerializer):
-  cp = codepostalSerializer()
+  code_postal = codepostalSerializer()
+  type_adresses = typeAdresseSerializer(many=True)
 
   class Meta:
     model = Adresse
-    fields = ['id', 'cp', 'rue', 'numero', 'boite']
-
-class clientAdresseSerializer(serializers.ModelSerializer):
-  client = clientSerializer()
-  adresse = adresseSerializer()
-  typeAdresse = typeAdresseSerializer()
-
-  class Meta:
-    model = Client_Adresse
-    fields = ['client', 'adresse', 'type_adresse']
-
-  def create(self,  validated_data):
-    client_data = validated_data.pop('client')
-    adresse_facturation_data = validated_data.pop('adresse_facturation')
-    adresse_livraison_data = validated_data.pop('adresse_livraison')
-
-    client, created = Client.objects.get_or_create(**client_data)
-
-    if not created:
-      raise serializers.ValidationError({"client": "Le client existe déjà"})
-
+    fields = ['id', 'code_postal', 'rue', 'numero', 'boite', 'type_adresses']
     
+class ClientSerializer(serializers.ModelSerializer):
+    
+    adresses = adresseSerializer(many=True)
+
+    class Meta:
+        model = Client
+        fields = ['nom', 'prenom', 'telephone', 'email', 'nom_entreprise', 'tva_entreprise', 'adresses']
+
+    def create(self, validated_data):
+        # Extract nested data
+        adresses_data = validated_data.pop('adresses', [])
+        
+        # Create or retrieve the client
+        client, created = Client.objects.get_or_create(**validated_data)
+
+        # Check if the client already exists
+        if not created:
+            raise serializers.ValidationError({
+                'Client': 'Client existe déjà.'
+            })
+
+        # Process each address in the nested data
+        for adresse_data in adresses_data:
+            code_postal_data = adresse_data.pop('code_postal')
+            ville_data = code_postal_data.pop('ville')
+            pays_data = ville_data.pop('pays')
+
+            # Retrieve or create Pays, Ville, and Code_Postal
+            pays, _ = Pays.objects.get_or_create(**pays_data)
+            ville, _ = Ville.objects.get_or_create(pays=pays, **ville_data)
+            code_postal, _ = Code_Postal.objects.get_or_create(ville=ville, **code_postal_data)
+
+            # Check if the address already exists
+            adresse, created = Adresse.objects.get_or_create(
+                rue=adresse_data['rue'],
+                numero=adresse_data['numero'],
+                boite=adresse_data.get('boite', ''),
+                code_postal=code_postal
+            )
+
+            # Add type_adresses to the address
+            type_adresses_data = adresse_data.pop('type_adresses', [])
+            for type_adresse_data in type_adresses_data:
+                type_adresse, _ = Type_Adresse.objects.get_or_create(**type_adresse_data)
+                adresse.type_adresses.add(type_adresse)
+
+            # Link the address to the client
+            adresse.clients.add(client)
+
+        return client
+
+

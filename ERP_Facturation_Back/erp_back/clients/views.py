@@ -6,31 +6,35 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.exceptions import AuthenticationFailed
 from datetime import datetime
 from rest_framework.response import Response
-from .serializers import clientSerializer, paysSerializer, clientAdresseSerializer
-from .models import Pays
+from .serializers import ClientSerializer, paysSerializer
+from .models import Pays, Client
 
-@api_view(['POST'])
+@api_view(['GET'])
 def get_clients(request):
-  pass
+  clients = Client.objects.all()
+  serializer = ClientSerializer(clients, many=True)
+  return Response(serializer.data, status=200)
   
 @api_view(['POST'])
 def new(request):
-  serializer = clientAdresseSerializer(data=request.data)
+  serializer = ClientSerializer(data=request.data)
 
+  
   if serializer.is_valid():
     serializer.save()
-
     return Response({
       "success": True,
       "Message": "Nouveau client créé",
       "data": serializer.data
     }, status=201)
 
+  print(serializer.errors)
   return Response({
       "success": False,
       "message": "Erreur lors de la création du client",
       "errors": serializer.errors
     }, status=400)
+
 
 @api_view(['POST'])
 def delete_client(request):
