@@ -7,6 +7,10 @@ import Homepage from './pages/homepage/homepage';
 import ProtectedRoute from './components/protectedRoutes';
 import ClientList from './pages/clients/clientList';
 import NewClient from './pages/clients/newClient';
+import ArticleList from './pages/articles/articleList';
+import NewArticle from './pages/articles/newArticle';
+import FactureList from './pages/factures/factureList';
+import NewFacture from './pages/factures/newFacture';
 
 function App() {
   return (
@@ -18,6 +22,10 @@ function App() {
         <Route path="/home" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
         <Route path="/clients" element={<ProtectedRoute><ClientList /></ProtectedRoute>} />
         <Route path="/clients/nouveau" element={<ProtectedRoute><NewClient /></ProtectedRoute>} />
+        <Route path="/articles" element={<ProtectedRoute><ArticleList /></ProtectedRoute>} />
+        <Route path="/articles/nouveau" element={<ProtectedRoute><NewArticle /></ProtectedRoute>} />
+        <Route path="/factures" element={<ProtectedRoute><FactureList /></ProtectedRoute>} />
+        <Route path="/factures/nouveau" element={<ProtectedRoute><NewFacture /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

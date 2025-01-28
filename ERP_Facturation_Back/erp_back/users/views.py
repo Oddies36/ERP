@@ -1,10 +1,7 @@
-from django.shortcuts import render
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from rest_framework.decorators import api_view
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework.exceptions import AuthenticationFailed
-from datetime import datetime
 from rest_framework.response import Response
 from .serializers import UserSerializer, LoginSerializer
 

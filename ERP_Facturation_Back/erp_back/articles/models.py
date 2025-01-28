@@ -19,7 +19,7 @@ class Article(models.Model):
     unit = models.CharField(max_length=50)
     pourcentage_alc = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     volume = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    consigne = models.BooleanField(default=False)
+    prix_consigne = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     qty_paquet = models.IntegerField()
     poids = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True)
 

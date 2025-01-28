@@ -82,56 +82,75 @@ const NewClient = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     const dataToSend = transformData(client);
+    console.log(dataToSend);
     try {
       const response = await api.post("/clients/new/", dataToSend);
       console.log("Client created:", response.data);
       navigate("/clients");
     } catch (err) {
+      if (err.response) {
+        const errorData = err.response.data;
+        if (errorData.Client) {
+          setError(`Erreur: ${errorData.Client}`); // Custom error message based on the backend's response
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      } else {
+        setError("Failed to connect to the server. Please check your network connection.");
+      }
       console.error("Error creating client:", err);
-      setError("Failed to create client.");
     }
   };
 
   const transformData = (client) => ({
-    client: {
-      nom: client.nom,
-      prenom: client.prenom,
-      telephone: client.telephone,
-      email: client.email,
-      nom_entreprise: client.nom_entreprise,
-      tva_entreprise: client.tva_entreprise
-    },
-    adresse_livraison: {
-      rue_livraison: client.rue_livraison,
-      numero_livraison: client.numero_livraison,
-      boite_livraison: client.boite_livraison,
-      codepostal_livraison: {
-        cp_livraison: client.cp_livraison,
-        ville_livraison: {
-          ville_livraison: client.ville_livraison,
-          pays_livraison: {
-            pays_livraison: client.pays_livraison
-          }
-        }
-      }
-    },
-    adresse_facturation: {
-      rue_facturation: client.rue_facturation,
-      numero_facturation: client.numero_facturation,
-      boite_facturation: client.boite_facturation,
-      codepostal_facturation: {
-        cp_facturation: client.cp_facturation,
-        ville_facturation: {
-          ville_facturation: client.ville_facturation,
-          pays_facturation: {
-            pays_facturation: client.pays_facturation
-          }
-        }
-      }
-    },
-    same_address: client.same_address
+    
+    nom: client.nom,
+    prenom: client.prenom,
+    telephone: client.telephone,
+    email: client.email,
+    nom_entreprise: client.nom_entreprise || null,
+    tva_entreprise: client.tva_entreprise || null,
+    
+    adresses: [
+      {
+        type_adresses: [ // Use a list here
+          { type_adresse: "Livraison" }
+        ],
+        rue: client.rue_livraison,
+        numero: client.numero_livraison,
+        boite: client.boite_livraison || null,
+        code_postal: {
+          cp: client.cp_livraison,
+          ville: {
+            ville: client.ville_livraison,
+            pays: {
+              pays: client.pays_livraison,
+              code_iso: client.code_iso_livraison || null,
+            },
+          },
+        },
+      },
+      {
+        type_adresses: [ // Use a list here
+          { type_adresse: "Facturation" }
+        ],
+        rue: client.rue_facturation,
+        numero: client.numero_facturation,
+        boite: client.boite_facturation || null,
+        code_postal: {
+          cp: client.cp_facturation,
+          ville: {
+            ville: client.ville_facturation,
+            pays: {
+              pays: client.pays_facturation,
+              code_iso: client.code_iso_facturation || null,
+            },
+          },
+        },
+      },
+    ],
   });
 
   return (
@@ -268,7 +287,7 @@ const NewClient = () => {
                 sx={{ mb: 1 }}
               >
                 {listePays.map((option) => (
-                  <MenuItem key={`livraison-${option.id}`} value={option.id}>
+                  <MenuItem key={`livraison-${option.id}`} value={option.pays}>
                     {option.pays}
                   </MenuItem>
                 ))}
@@ -340,7 +359,7 @@ const NewClient = () => {
                 sx={{ mb: 3 }}
               >
                 {listePays.map((option) => (
-                  <MenuItem key={`facturation-${option.id}`} value={option.id}>
+                  <MenuItem key={`facturation-${option.id}`} value={option.pays}>
                     {option.pays}
                   </MenuItem>
                 ))}

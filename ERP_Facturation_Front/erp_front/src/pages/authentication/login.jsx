@@ -9,7 +9,6 @@ import {
   Card,
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
-import { Navigate } from "react-router-dom";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setCredentials({ ...credentials, [name]: value });
   };
 
@@ -42,8 +40,8 @@ const Login = () => {
       navigate("/home");
     } catch (err) {
       console.error("login error: ", err);
-      setError("Nom d'utilisateur ou mot de passe incorrecte.");
-      setCredentials({username: "", password: ""});
+      setError("Nom d'utilisateur ou mot de passe incorrect.");
+      setCredentials({ username: "", password: "" });
     }
   };
 
@@ -51,41 +49,46 @@ const Login = () => {
     <Box
       sx={{
         minHeight: "100vh",
-        width: "100vw",
-        backgroundImage: "url(/images/background.jpg)",
-        backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        backgroundColor: "#f8f9fa",
       }}
     >
-      <Container
-        maxWidth="sm"
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
+      <Container maxWidth="xs">
         <Card
-          variant="outlined"
-          elevation={8}
+          elevation={3}
           sx={{
-            padding: 4,
-            width: "100%",
+            padding: "2rem",
+            borderRadius: "10px",
             textAlign: "center",
-            borderRadius: 2,
-            borderColor: "black",
           }}
         >
-          <Typography variant="h4" component="h1" gutterBottom>
-            Login
+          {/* Logo */}
+          <Box sx={{ marginBottom: "1.5rem" }}>
+            <img
+              src="/images/logo.jpg" // Utilisation du chemin public
+              alt="ERP Logo"
+              style={{
+                maxWidth: "150px",
+                height: "auto",
+              }}
+            />
+          </Box>
+
+          <Typography variant="h5" sx={{ marginBottom: "1rem", fontWeight: 600 }}>
+            Système ERP
+          </Typography>
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            sx={{ marginBottom: "2rem" }}
+          >
+            Connectez vous pour continuer
           </Typography>
 
           {error && (
-            <Typography variant="body1" color="error" gutterBottom>
+            <Typography variant="body2" color="error" sx={{ marginBottom: 2 }}>
               {error}
             </Typography>
           )}
@@ -94,25 +97,41 @@ const Login = () => {
             <Box sx={{ marginBottom: 2 }}>
               <TextField
                 fullWidth
-                label="Nom d'utilisateur"
+                label="Email or username"
                 name="username"
                 value={credentials.username}
                 onChange={handleChange}
                 variant="outlined"
+                size="small"
               />
             </Box>
-            <Box sx={{ marginBottom: 1 }}>
+            <Box sx={{ marginBottom: 2 }}>
               <TextField
                 fullWidth
-                label="Mot de passe"
+                label="Password"
                 name="password"
                 type="password"
                 value={credentials.password}
                 onChange={handleChange}
                 variant="outlined"
+                size="small"
               />
             </Box>
-            <Box
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{
+
+                fontWeight: "bold",
+                marginBottom: "1em"
+              }}
+            >
+              Connexion
+            </Button>
+          </form>
+          
+          <Box
               fullWidth
               display="flex"
               justifyContent={"space-between"}
@@ -135,20 +154,6 @@ const Login = () => {
                 Mot de passe oublié
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              type="submit"
-              sx={{
-                backgroundColor: "#1976d2",
-                "&:hover": {
-                  backgroundColor: "#115293",
-                },
-                width: "50%",
-              }}
-            >
-              Login
-            </Button>
-          </form>
         </Card>
       </Container>
     </Box>

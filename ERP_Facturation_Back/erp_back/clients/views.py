@@ -1,18 +1,13 @@
-from django.shortcuts import render
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
 from rest_framework.decorators import api_view
-from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from rest_framework.exceptions import AuthenticationFailed
-from datetime import datetime
 from rest_framework.response import Response
-from .serializers import ClientSerializer, paysSerializer
-from .models import Pays, Client
+from .serializers import ClientSerializer, paysSerializer, adresseSerializer
+from .models import Pays, Client, Adresse
 
 @api_view(['GET'])
 def get_clients(request):
   clients = Client.objects.all()
   serializer = ClientSerializer(clients, many=True)
+
   return Response(serializer.data, status=200)
   
 @api_view(['POST'])
@@ -50,3 +45,22 @@ def get_pays(request):
   serializer = paysSerializer(pays, many=True)
 
   return Response(serializer.data)
+
+@api_view(['GET'])
+def get_addresses_client(request, id_client):
+  try:
+    client = Client.objects.get(id=id_client)
+    print(client)
+  except Client.DoesNotExist:
+    return Response({"erreur": "Le client n'existe pas."}, status=401)
+  
+  adresse_facturation = Adresse.objects.filter(clients=client, type_adresses__type_adresse="Facturation")
+  adresse_livraison = Adresse.objects.filter(clients=client, type_adresses__type_adresse="Livraison")
+
+  facturation_serializer = adresseSerializer(adresse_facturation, many=True)
+  livraison_serializer = adresseSerializer(adresse_livraison, many=True)
+
+  return Response({
+    "facturation": facturation_serializer.data,
+    "livraison": livraison_serializer.data
+  }, status=200)
