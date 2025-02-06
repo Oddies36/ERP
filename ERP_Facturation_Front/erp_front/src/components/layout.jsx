@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Container,
   Typography,
   Button,
   Box,
@@ -27,6 +26,7 @@ const Layout = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
+  //Ouvre et ferme le drawer pour une version mobile
   const handleDrawerToggle = () => {
     setDrawerOpen(!drawerOpen);
   };
@@ -37,7 +37,8 @@ const Layout = ({ children }) => {
     { text: "Articles", icon: <InventoryIcon />, to: "/articles" },
     { text: "Factures", icon: <ReceiptIcon />, to: "/factures" },
   ];
-
+  
+  //Est utilisé dans le visuel pour montrer les boutons
   const renderNavigation = () => (
     <List>
       {navigationItems.map((item) => (
@@ -50,9 +51,7 @@ const Layout = ({ children }) => {
           }}
         >
           <ListItemIcon sx={{ color: "#fff" }}>{item.icon}</ListItemIcon>
-          <ListItemText primary={item.text}
-                    sx={{color: "#fff"}}
-                     />
+          <ListItemText primary={item.text} sx={{ color: "#fff" }} />
         </ListItem>
       ))}
     </List>
@@ -69,10 +68,11 @@ const Layout = ({ children }) => {
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           zIndex: theme.zIndex.drawer + 1,
-          width: "100%"
+          width: "100%",
         }}
       >
         <Toolbar>
+          {/* Si la résolution mobile est active */}
           {isMobile && (
             <IconButton
               edge="start"
@@ -92,7 +92,8 @@ const Layout = ({ children }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar or Drawer */}
+      {/* Si la résolution normale est active.*/}
+      {/* Montre la barre à gauche */}
       <Box sx={{ display: "flex" }}>
         {!isMobile ? (
           <Box
@@ -117,8 +118,7 @@ const Layout = ({ children }) => {
                 width: 250,
                 backgroundColor: "#1722C9",
                 color: "#fff",
-                marginTop: "56px", // Pushes the drawer below the AppBar (AppBar height)
-
+                marginTop: "56px",
               },
             }}
           >
@@ -126,7 +126,7 @@ const Layout = ({ children }) => {
           </Drawer>
         )}
 
-        {/* Main Content */}
+        {/* Contenu */}
         <Box
           sx={{
             flexGrow: 1,

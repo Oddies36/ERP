@@ -15,6 +15,11 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  DialogActions,
+  Dialog,
+  DialogContent,
+  TextField,
+  DialogTitle
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { Link, useNavigate } from "react-router-dom";
@@ -35,6 +40,10 @@ const ArticleList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [quantity, setQuantity] = useState("");
+  const [selectedArticle, setSelectedArticle] = useState(null);
   const itemsPerPage = 7;
   const navigate = useNavigate();
 
@@ -55,32 +64,15 @@ const ArticleList = () => {
     getArticles();
   }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/articles/${id}/`);
-      const updatedArticles = articles.filter((article) => article.id !== id);
-      setArticles(updatedArticles);
-
-      const updatedFilteredArticles = filteredArticles.filter(
-        (article) => article.id !== id
-      );
-      setFilteredArticles(updatedFilteredArticles);
-      setTotalItems(updatedFilteredArticles.length);
-
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      setCurrentArticles(updatedFilteredArticles.slice(startIndex, endIndex));
-    } catch (err) {
-      setError("Failed to delete the article.");
-    }
-  };
-
+  //Fonction qui gère le tri. field est le nom de la colonne
   const handleSort = (field) => {
     const newSortOrder =
+      //Passe de asc à desc et invésement
       sortField === field && sortOrder === "asc" ? "desc" : "asc";
     setSortField(field);
     setSortOrder(newSortOrder);
 
+    //Cree une nouvelle copie du tableau des articles fitrés et applique le tri
     const sortedArticles = [...filteredArticles].sort((a, b) => {
       if (a[field] < b[field]) return newSortOrder === "asc" ? -1 : 1;
       if (a[field] > b[field]) return newSortOrder === "asc" ? 1 : -1;
@@ -89,13 +81,18 @@ const ArticleList = () => {
 
     setFilteredArticles(sortedArticles);
     const startIndex = (currentPage - 1) * itemsPerPage;
-    setCurrentArticles(sortedArticles.slice(startIndex, startIndex + itemsPerPage));
+    setCurrentArticles(
+      sortedArticles.slice(startIndex, startIndex + itemsPerPage)
+    );
   };
 
+  //Fonction qui gère le nombre d'elements par page
   const handlePageChange = (event, page) => {
     setCurrentPage(page);
     const startIndex = (page - 1) * itemsPerPage;
-    setCurrentArticles(filteredArticles.slice(startIndex, startIndex + itemsPerPage));
+    setCurrentArticles(
+      filteredArticles.slice(startIndex, startIndex + itemsPerPage)
+    );
   };
 
   const handleSearch = (event) => {
@@ -115,9 +112,71 @@ const ArticleList = () => {
     setCurrentPage(1);
   };
 
+  const handleMenuOpen = (event, article) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedArticle(article);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedArticle(null);
+  };
+
+  const handleAddQuantity = async () => {
+    if (!quantity || isNaN(quantity) || quantity <= 0) {
+      setError("Veuillez entrer une quantité valide.");
+      return;
+    }
+
+    try {
+      await api.patch(`/articles/add/${selectedArticle.id}/`, {
+        qty_stock: selectedArticle.qty_stock + parseInt(quantity),
+      });
+
+      // Update local state to reflect the change
+      setArticles((prevArticles) =>
+        prevArticles.map((article) =>
+          article.id === selectedArticle.id
+            ? { ...article, qty_stock: article.qty_stock + parseInt(quantity) }
+            : article
+        )
+      );
+
+      setFilteredArticles((prevFiltered) =>
+        prevFiltered.map((article) =>
+          article.id === selectedArticle.id
+            ? { ...article, qty_stock: article.qty_stock + parseInt(quantity) }
+            : article
+        )
+      );
+
+      setCurrentArticles((prevCurrent) =>
+        prevCurrent.map((article) =>
+          article.id === selectedArticle.id
+            ? { ...article, qty_stock: article.qty_stock + parseInt(quantity) }
+            : article
+        )
+      );
+
+      handleDialogClose();
+    } catch (err) {
+      setError("Échec de l'ajout de la quantité.");
+    }
+  };
+
+  const handleDialogOpen = () => {
+    setDialogOpen(true);
+    setAnchorEl(null);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setQuantity(""); // Reset quantity input
+  };
+
   return (
     <Layout>
-      <Container>
+      <Container maxWidth={false} sx={{ padding: "20px" }}>
         {loading ? (
           <Typography>Loading...</Typography>
         ) : (
@@ -143,32 +202,33 @@ const ArticleList = () => {
                 <AddCircleOutlineIcon />
               </Button>
             </Box>
+            <Typography>{error}</Typography>
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
                   <TableRow>
                     <TableCell>
-                      <Button onClick={() => handleSort("article")}>
+                      <Button onClick={() => handleSort("article")} sx={{padding: 0}}>
                         Article <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("qty_paquet")}>
+                      <Button onClick={() => handleSort("qty_paquet")} sx={{padding: 0}}>
                         Quantité dans le paquet <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("categorie_nom")}>
+                      <Button onClick={() => handleSort("categorie_nom")} sx={{padding: 0}}>
                         Catégorie <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("qty_stock")}>
+                      <Button onClick={() => handleSort("qty_stock")} sx={{padding: 0}}>
                         Quantité en stock <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("qty_min")}>
+                      <Button onClick={() => handleSort("qty_min")} sx={{padding: 0}}>
                         Stock minimum <SwapVertIcon />
                       </Button>
                     </TableCell>
@@ -179,17 +239,31 @@ const ArticleList = () => {
                   {currentArticles.map((article) => (
                     <TableRow key={article.id}>
                       <TableCell size="small">{article.article}</TableCell>
-                      <TableCell size="small">{article.qty_paquet || "N/A"}</TableCell>
-                      <TableCell size="small">{article.categorie_nom}</TableCell>
+                      <TableCell size="small">
+                        {article.qty_paquet || "N/A"}
+                      </TableCell>
+                      <TableCell size="small">
+                        {article.categorie_nom}
+                      </TableCell>
                       <TableCell size="small">{article.qty_stock}</TableCell>
                       <TableCell size="small">{article.qty_min}</TableCell>
                       <TableCell size="small">
-                        <IconButton>
+                        <IconButton onClick={(event) => handleMenuOpen(event, article)}>
                           <MoreVertIcon />
                         </IconButton>
-                        <Menu>
-                          <MenuItem>Edit</MenuItem>
-                          <MenuItem>Delete</MenuItem>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl)}
+                          onClose={handleMenuClose}
+                          slotProps={{
+                            paper: {
+                              elevation: 2,
+                            },
+                          }}
+                        >
+                          <MenuItem onClick={handleDialogOpen}>
+                            Ajouter des articles
+                          </MenuItem>
                         </Menu>
                       </TableCell>
                     </TableRow>
@@ -217,6 +291,29 @@ const ArticleList = () => {
           </Box>
         )}
       </Container>
+      {/* Dialog Box for Quantity Input */}
+      <Dialog open={dialogOpen} onClose={handleDialogClose}>
+        <DialogTitle>Ajouter une quantité</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Quantité"
+            type="number"
+            fullWidth
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose} color="secondary">
+            Annuler
+          </Button>
+          <Button onClick={handleAddQuantity} color="primary">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

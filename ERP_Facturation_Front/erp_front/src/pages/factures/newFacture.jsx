@@ -6,17 +6,27 @@ import {
   Typography,
   Box,
   Grid,
-  IconButton,
   Card,
   CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Autocomplete,
 } from "@mui/material";
 import { Add, Remove } from "@mui/icons-material";
+import SearchBar from "../../components/searchbar";
 import Layout from "../../components/layout";
 import api from "../../api/axiosConfig";
 import { Decimal } from "decimal.js";
 import { useNavigate } from "react-router-dom";
-
 
 function NewFacture() {
   const navigate = useNavigate();
@@ -30,13 +40,19 @@ function NewFacture() {
   const [allArticles, setAllArticles] = useState([]);
   const [totals, setTotals] = useState({ subtotal: 0, tva: 0, total: 0 });
   const [error, setError] = useState();
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [articleModalOpen, setArticleModalOpen] = useState(false);
+  const [filteredClients, setFilteredClients] = useState([]);
+  const [filteredArticles, setFilteredArticles] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [basesImposables, setBasesImposables] = useState([]);
 
-  // Fetch clients for the autocomplete
   useEffect(() => {
     const getClients = async () => {
       try {
         const response = await api.get("/clients/get-clients/");
         setClients(response.data);
+        setFilteredClients(response.data);
       } catch (err) {
         console.error("Failed to fetch clients.");
       }
@@ -52,11 +68,7 @@ function NewFacture() {
           const response = await api.get(
             `/clients/${selectedClient.id}/addresses/`
           );
-          const { facturation, livraison } = response.data;
-
-          console.log("facturation: ", facturation);
-          console.log("livraison", livraison);
-          setClientAddresses({ facturation, livraison });
+          setClientAddresses(response.data);
         } catch (err) {
           console.error("Failed to fetch client addresses.");
         }
@@ -73,8 +85,8 @@ function NewFacture() {
       const getArticles = async () => {
         try {
           const response = await api.get("/articles/get-articles/");
-          console.log("Articles received:", response.data);
           setAllArticles(response.data);
+          setFilteredArticles(response.data);
         } catch (err) {
           console.error("Failed to fetch articles.");
         }
@@ -87,46 +99,144 @@ function NewFacture() {
 
   // Calculate totals dynamically
   useEffect(() => {
-    // Calculate subtotal (total HTVA for all items)
-    const subtotal = articles.reduce(
-      (sum, article) =>
-        Decimal.sum(sum, Decimal(article.quantity).times(article.prix_htva)),
-      new Decimal(0)
-    );
+    const basesImposables = {}; // Object to store the taxable base per VAT rate
+    const tvaDetails = {}; // Object to store calculated TVA per rate
+    let totalTVA = new Decimal(0);
+    let totalHTVA = new Decimal(0);
 
-    // Calculate TVA for each item, round it, and then sum up
-    const tva = articles.reduce((sum, article) => {
-      const tvaForOneItem = Decimal(article.prix_htva)
-        .times(article.tva)
-        .div(100) // TVA for one item
-        .toDecimalPlaces(2); // Round to 2 decimal places
-      const totalTVAForItem = tvaForOneItem
-        .times(article.quantity)
-        .toDecimalPlaces(2); // Round after multiplying by quantity
-      return Decimal.sum(sum, totalTVAForItem);
-    }, new Decimal(0));
+    articles.forEach(article => {
+        const tauxTVA = Number(article.tva) || 0; // Ensure VAT rate is a number
+        const prixHTVA = Number(article.prix_htva) || 0; // Ensure HTVA is a number
+        const remise = Number(article.remise) || 0; // Ensure remise is a number
+        const quantity = Number(article.quantity) || 0; // Ensure quantity is a number
 
-    // Update totals with rounded values
-    setTotals({
-      subtotal: subtotal.toDecimalPlaces(2).toNumber(),
-      tva: tva.toDecimalPlaces(2).toNumber(),
-      total: subtotal.plus(tva).toDecimalPlaces(2).toNumber(),
+        if (!basesImposables[tauxTVA]) {
+            basesImposables[tauxTVA] = new Decimal(0);
+            tvaDetails[tauxTVA] = { baseHTVA: new Decimal(0), montantTVA: new Decimal(0) };
+        }
+
+        // ✅ Apply remise before calculations
+        const prixRemisé = Decimal(prixHTVA)
+            .times(Decimal(1).minus(Decimal(remise).div(100))) // Apply discount
+            .toDecimalPlaces(2);
+
+        // ✅ Compute total HTVA for this article after remise
+        const totalHTVAArticle = prixRemisé
+            .times(quantity)
+            .toDecimalPlaces(2);
+
+        // ✅ Compute TVA per unit after remise
+        const tvaParUnite = prixRemisé
+            .times(tauxTVA)
+            .div(100)
+            .toDecimalPlaces(2);
+
+        // ✅ Compute total TVA for this article
+        const totalTVAArticle = tvaParUnite
+            .times(quantity)
+            .toDecimalPlaces(2);
+
+        // ✅ Update taxable base and TVA amounts per VAT rate
+        basesImposables[tauxTVA] = basesImposables[tauxTVA].plus(totalHTVAArticle);
+        tvaDetails[tauxTVA].baseHTVA = basesImposables[tauxTVA];
+        tvaDetails[tauxTVA].montantTVA = tvaDetails[tauxTVA].montantTVA.plus(totalTVAArticle);
+
+        // ✅ Update overall totals
+        totalHTVA = totalHTVA.plus(totalHTVAArticle);
+        totalTVA = totalTVA.plus(totalTVAArticle);
     });
-  }, [articles]);
 
-  const handleAddArticle = () => {
-    setArticles([
-      ...articles,
-      {
-        id: "",
-        line_number: articles.length + 1,
-        quantity: 0,
-        qty_stock: 0,
-        prix_htva: 0,
-        tva: 0,
-      },
-    ]);
+    // Convert Decimal values to numbers before updating state
+    setTotals({
+        subtotal: totalHTVA.toDecimalPlaces(2).toNumber(),
+        tva: totalTVA.toDecimalPlaces(2).toNumber(),
+        total: totalHTVA.plus(totalTVA).toDecimalPlaces(2).toNumber(),
+    });
+
+    // Convert basesImposables values to numbers before updating state
+    const formattedTVADetails = Object.keys(tvaDetails).reduce((acc, tauxTVA) => {
+        acc[tauxTVA] = {
+            baseHTVA: tvaDetails[tauxTVA].baseHTVA.toDecimalPlaces(2).toNumber(),
+            montantTVA: tvaDetails[tauxTVA].montantTVA.toDecimalPlaces(2).toNumber(),
+        };
+        return acc;
+    }, {});
+
+    setBasesImposables(formattedTVADetails);
+}, [articles]);
+
+  
+  
+  
+
+  // Handle Client Selection from Modal
+  const handleClientSelect = (client) => {
+    setError("");
+    setSelectedClient(client);
+    setClientModalOpen(false);
+    setArticles([]);
+    setTotals({ subtotal: 0, tva: 0, total: 0 });
   };
+
+  const handleArticleModal = () => {
+    setArticleModalOpen(true);
+  };
+
+  const getTVAArticle = async (article) => {
+    const pays =
+      clientAddresses.facturation?.[0]?.code_postal?.ville?.pays?.pays;
+
+    if (pays) {
+      const tvaResponse = await api.get(
+        `/articles/get-tva/${pays}/${article.categorie}/${selectedClient.tva_entreprise}/`
+      );
+      return tvaResponse.data.tva;
+    }
+  };
+
+  const handleAddArticle = async (article) => {
+    if (article.qty_stock > 0) {
+      setError("");
+      const tva = await getTVAArticle(article);
+  
+      // Convert values to numbers
+      const prixHTVA = Number(article.prix_htva);
+      const tauxTVA = Number(tva);
+  
+      // ✅ Compute prixAvecTva immediately
+      const prixAvecTva = Decimal(prixHTVA)
+        .times(Decimal(1).plus(Decimal(tauxTVA).div(100)))
+        .toDecimalPlaces(2)
+        .toNumber();
+  
+      // ✅ Initialize total values as 0 since quantity is 0
+      const newArticle = {
+        id: article.id,
+        article: article.article,
+        line_number: articles.length + 1,
+        quantity: 0, // Start with 0
+        qty_stock: article.qty_stock,
+        prix_htva: prixHTVA, // Store as number
+        tva: tauxTVA, // Store as number
+        prixAvecTva, // ✅ Now calculated on add
+        totalHtva: 0,
+        montantTva: 0,
+        totalTtc: 0,
+        remise: 0
+      };
+  
+      // ✅ Update state with the new article
+      setArticles((prevArticles) => [...prevArticles, newArticle]);
+  
+      setArticleModalOpen(false);
+    } else {
+      setArticleModalOpen(false);
+      setError(
+        `Nombre de stock insuffisant pour ${article.article} ${article.qty_paquet}`
+      );
+    }
+  };
+  
 
   const handleRemoveArticle = (index) => {
     setArticles(articles.filter((_, i) => i !== index));
@@ -136,81 +246,116 @@ function NewFacture() {
     setError("");
     const updatedArticles = [...articles];
 
+
+    if (field === "remise") {
+      if(value > 100){
+        updatedArticles[index][field] = 100;
+      } else if(value < 1){
+        updatedArticles[index][field] = 0;
+      } else{
+        updatedArticles[index][field] = value;
+      }
+    }
+  
     if (field === "quantity") {
       const currentArticle = updatedArticles[index];
-
-      // Check if quantity exceeds stock
+      
+      // Prevent exceeding stock limits
       if (value > currentArticle.qty_stock) {
-        setError("La quantité choisi dépasse le nombre en stock");
-        updatedArticles[index][field] = currentArticle.qty_stock; // Cap at stock
+        setError("La quantité choisie dépasse le nombre en stock");
+        updatedArticles[index][field] = currentArticle.qty_stock;
       } else if (value < 1) {
-        updatedArticles[index][field] = 0; // Minimum quantity is 1
+        updatedArticles[index][field] = 0; // Minimum quantity = 0
       } else {
         updatedArticles[index][field] = value;
       }
-    } else {
-      updatedArticles[index][field] = value;
     }
 
-    if (field === "id" && value) {
-      try {
-        // Fetch the article details directly using the selected ID
-        const selectedArticle = allArticles.find((a) => a.id === value);
-
-        if (selectedArticle) {
-          updatedArticles[index] = {
-            ...updatedArticles[index],
-            id: selectedArticle.id,
-            article: selectedArticle.article,
-            prix_htva: selectedArticle.prix_htva,
-            categorie: selectedArticle.categorie,
-            qty_stock: selectedArticle.qty_stock,
-            quantity: updatedArticles[index].quantity || 0, // Default quantity
-          };
-
-          // Fetch the TVA rate
-          const pays =
-            clientAddresses.facturation?.[0]?.code_postal?.ville?.pays?.pays;
-
-          if (pays) {
-            const tvaResponse = await api.get(
-              `/articles/get-tva/${pays}/${selectedArticle.categorie}/${selectedClient.tva_entreprise}/`
-            );
-
-            updatedArticles[index].tva = tvaResponse.data.tva || 0;
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch article or TVA rate:", err);
-      }
-    }
-
-    // Recalculate dependent values
+    // Convert values to numbers before calculations
     const article = updatedArticles[index];
-    if (article.prix_htva && article.tva !== undefined) {
-      const prixAvecTva = Decimal(article.prix_htva)
-        .times(1 + article.tva / 100)
+    const prixHTVA = Number(article.prix_htva); // Convert from string to number
+    const tauxTVA = Number(article.tva); // Convert from string to number
+    const remise = Number(article.remise);
+    if (!isNaN(prixHTVA) && !isNaN(tauxTVA)) {
+      // ✅ Apply remise before calculations
+      const prixRemisé = Decimal(prixHTVA)
+        .times(Decimal(1).minus(Decimal(remise).div(100))) // Apply discount
         .toDecimalPlaces(2)
         .toNumber();
-      const totalHtva = Decimal(article.prix_htva)
+
+      // ✅ Calculate total HTVA after remise
+      const totalHTVA = Decimal(prixRemisé)
         .times(article.quantity)
         .toDecimalPlaces(2)
         .toNumber();
-      const totalAvecTva = Decimal(prixAvecTva)
+
+      // ✅ Calculate TVA per unit based on discounted price
+      const tvaParUnite = Decimal(prixRemisé)
+        .times(tauxTVA)
+        .div(100)
+        .toDecimalPlaces(2);
+
+      // ✅ Calculate total TVA
+      const montantTVA = tvaParUnite
         .times(article.quantity)
+        .toDecimalPlaces(2)
+        .toNumber();
+
+      // ✅ Calculate total TTC
+      const totalTTC = Decimal(totalHTVA)
+        .plus(montantTVA)
         .toDecimalPlaces(2)
         .toNumber();
 
       updatedArticles[index] = {
         ...article,
-        prixAvecTva,
-        totalHtva,
-        totalAvecTva,
+        prixRemisé, // Store the discounted unit price
+        totalHtva: totalHTVA,
+        montantTva: montantTVA,
+        totalTtc: totalTTC,
       };
     }
 
-    // Update the state
     setArticles(updatedArticles);
+
+  };
+  
+  
+  
+  
+
+  const handleSearch = (event) => {
+    const term = event.target.value.toLowerCase();
+    setSearchTerm(term);
+
+    const filtered = clients.filter((client) =>
+      [
+        client.nom,
+        client.prenom,
+        client.email,
+        client.telephone,
+        client.id,
+        client.tva_entreprise,
+        client.nom_entreprise,
+      ]
+        .filter(Boolean) // Remove any undefined/null values
+        .some((field) => field.toString().toLowerCase().includes(term))
+    );
+
+    setFilteredClients(filtered);
+  };
+
+  const handleArticleSearch = (event) => {
+    const term = event.target.value.toLowerCase();
+    setSearchTerm(term);
+
+    const filtered = allArticles.filter((article) =>
+      [article.article, article.id, article.ean]
+        .filter(Boolean)
+        .some((field) => field.toString().toLowerCase().includes(term))
+    );
+
+    setFilteredArticles(filtered);
   };
 
   const handleSubmit = async () => {
@@ -224,11 +369,11 @@ function NewFacture() {
             id: parseInt(article.id, 10),
             line_number: article.line_number,
             quantity: parseInt(article.quantity, 10),
+            remise: parseFloat(article.remise)
           })),
         };
 
         const response = await api.post("/factures/new-facture/", payload);
-        console.log("Facture:", response.data);
         navigate("/factures");
       } catch (err) {
         console.error("Erreur de création de facture:", err);
@@ -243,24 +388,75 @@ function NewFacture() {
           Nouvelle facture
         </Typography>
         <Box display="flex" mb={4} alignItems="flex-start" gap={2}>
-          <Autocomplete
-            options={clients}
-            getOptionLabel={(option) => `${option.nom} ${option.prenom}`}
-            onChange={(e, value) => {
-              setSelectedClient(value);
-              setArticles([]); // Clear articles when a new client is selected
-              setTotals({ subtotal: 0, tva: 0, total: 0 }); // Optionally reset totals
+          {/* Client Selection */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 1,
             }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Client"
-                variant="outlined"
-                size="small"
-                sx={{ width: 300 }}
-              />
-            )}
-          />
+          >
+            <Button
+              variant="contained"
+              onClick={() => setClientModalOpen(true)}
+            >
+              Sélectionner un client
+            </Button>
+            <Typography sx={{ fontWeight: "bold", fontSize: "35px" }}>
+              {selectedClient?.nom} {selectedClient?.prenom}
+            </Typography>
+          </Box>
+          <Dialog
+            open={clientModalOpen}
+            onClose={() => setClientModalOpen(false)}
+            maxWidth="md"
+          >
+            <DialogTitle>Choisissez un client</DialogTitle>
+            <SearchBar
+              value={searchTerm}
+              onChange={handleSearch}
+              placeholder="Rechercher de client"
+            />
+            <DialogContent>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Nom</TableCell>
+                      <TableCell>Prénom</TableCell>
+                      <TableCell>Numéro du client</TableCell>
+                      <TableCell>TVA entreprise</TableCell>
+                      <TableCell>Nom entreprise</TableCell>
+                      <TableCell>Action</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredClients.map((client) => (
+                      <TableRow key={client.id}>
+                        <TableCell>{client.nom}</TableCell>
+                        <TableCell>{client.prenom}</TableCell>
+                        <TableCell>{client.id}</TableCell>
+                        <TableCell>{client.tva_entreprise}</TableCell>
+                        <TableCell>{client.nom_entreprise}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outlined"
+                            onClick={() => handleClientSelect(client)}
+                          >
+                            Sélectionner
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setClientModalOpen(false)}>Fermer</Button>
+            </DialogActions>
+          </Dialog>
           {clientAddresses.facturation &&
             clientAddresses.facturation.length > 0 && (
               <Card sx={{ flex: 1 }}>
@@ -320,25 +516,11 @@ function NewFacture() {
             </Typography>
             <Box mb={4}>
               {articles.map((article, index) => (
-                <Grid container spacing={2} key={index} alignItems="center">
-                  <Grid item xs={4} sx={{ mb: 1 }}>
-                    <Autocomplete
-                      options={allArticles}
-                      getOptionLabel={(option) =>
-                        `${option.article} - ${option.qty_paquet} unitées`
-                      }
-                      onChange={(e, value) =>
-                        handleArticleChange(index, "id", value?.id || "")
-                      }
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Article"
-                          variant="outlined"
-                          size="small"
-                        />
-                      )}
-                    />
+                <Grid container spacing={1} key={index} alignItems="center">
+                  <Grid item xs={1} sx={{ mb: 1 }}>
+                    <Typography>
+                      {article.article} {article.qty_paquet}
+                    </Typography>
                   </Grid>
                   <Grid item xs={2} sx={{ mb: 1 }}>
                     <TextField
@@ -352,10 +534,73 @@ function NewFacture() {
                       }
                     />
                   </Grid>
+                  <Grid item xs={3} sx={{ mb: 1 }}>
+                    <TextField
+                      label="Remise (%)"
+                      variant="outlined"
+                      size="small"
+                      type="number"
+                      value={article.remise}
+                      onChange={(e) =>
+                        handleArticleChange(index, "remise", e.target.value)
+                      }
+                    />
+                  </Grid>
                 </Grid>
               ))}
             </Box>
-            <Button variant="outlined" onClick={handleAddArticle}>
+
+            <Dialog
+              open={articleModalOpen}
+              onClose={() => setArticleModalOpen(false)}
+              maxWidth="md"
+            >
+              <DialogTitle>Choisissez un Article</DialogTitle>
+              <SearchBar
+                value={searchTerm}
+                onChange={handleArticleSearch}
+                placeholder="Rechercher d'un article'"
+              />
+              <DialogContent>
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Article</TableCell>
+                        <TableCell>Quantité paquet</TableCell>
+                        <TableCell>Pourcentage Alcool</TableCell>
+                        <TableCell>Quantité en stock</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredArticles.map((article) => (
+                        <TableRow key={article.id}>
+                          <TableCell>{article.article}</TableCell>
+                          <TableCell>{article.qty_paquet}</TableCell>
+                          <TableCell>{article.pourcentage_alc}</TableCell>
+                          <TableCell>{article.qty_stock}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outlined"
+                              onClick={() => handleAddArticle(article)}
+                            >
+                              Sélectionner
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setClientModalOpen(false)}>
+                  Fermer
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            <Button variant="outlined" onClick={handleArticleModal}>
               Ajouter un article
             </Button>
 
@@ -403,7 +648,15 @@ function NewFacture() {
                         textAlign: "left",
                       }}
                     >
-                      Prix HTVA
+                      Remise
+                    </th>
+                    <th
+                      style={{
+                        borderBottom: "1px solid #ddd",
+                        textAlign: "left",
+                      }}
+                    >
+                      Prix Article HTVA
                     </th>
                     <th
                       style={{
@@ -419,7 +672,7 @@ function NewFacture() {
                         textAlign: "left",
                       }}
                     >
-                      Prix avec TVA
+                      Prix Article TTC
                     </th>
                     <th
                       style={{
@@ -427,7 +680,7 @@ function NewFacture() {
                         textAlign: "left",
                       }}
                     >
-                      Total (HTVA)
+                      Total HTVA
                     </th>
                     <th
                       style={{
@@ -435,17 +688,12 @@ function NewFacture() {
                         textAlign: "left",
                       }}
                     >
-                      Total (avec TVA)
+                      Total TTC
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {articles.map((article, index) => {
-                    const prixAvecTva =
-                      article.prix_htva +
-                      article.prix_htva * (article.tva / 100);
-                    const totalHtva = article.prix_htva * article.quantity;
-                    const totalAvecTva = prixAvecTva * article.quantity;
 
                     return (
                       <tr key={index}>
@@ -479,6 +727,14 @@ function NewFacture() {
                             padding: "8px",
                           }}
                         >
+                          {article.remise}%
+                        </td>
+                        <td
+                          style={{
+                            borderBottom: "1px solid #ddd",
+                            padding: "8px",
+                          }}
+                        >
                           {Number(article.prix_htva || 0).toFixed(2)} €
                         </td>
                         <td
@@ -495,7 +751,7 @@ function NewFacture() {
                             padding: "8px",
                           }}
                         >
-                          {Number(article.prixAvecTva || 0).toFixed(2)} €
+                          {Number(article.prixAvecTva).toFixed(2)} €
                         </td>
                         <td
                           style={{
@@ -503,7 +759,7 @@ function NewFacture() {
                             padding: "8px",
                           }}
                         >
-                          {Number(article.totalHtva || 0).toFixed(2)} €
+                          {Number(article.totalHtva).toFixed(2)} €
                         </td>
                         <td
                           style={{
@@ -511,7 +767,7 @@ function NewFacture() {
                             padding: "8px",
                           }}
                         >
-                          {Number(article.totalAvecTva || 0).toFixed(2)} €
+                          {Number(article.totalTtc).toFixed(2)} €
                         </td>
                       </tr>
                     );
@@ -522,6 +778,33 @@ function NewFacture() {
 
             {/* Totals */}
             <Box mt={4} sx={{ mb: 2 }}>
+            {Object.keys(basesImposables).length > 0 && (
+  <>
+    <Typography variant="h6" mt={4}>
+      Détails des bases imposables par taux de TVA
+    </Typography>
+    <TableContainer component={Paper} sx={{ mt: 2 }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Taux de TVA</TableCell>
+            <TableCell>Base Imposable (HTVA)</TableCell>
+            <TableCell>Montant de TVA</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {Object.entries(basesImposables).map(([tauxTVA, details]) => (
+            <TableRow key={tauxTVA}>
+              <TableCell>{tauxTVA} %</TableCell>
+              <TableCell>{details.baseHTVA.toFixed(2)} €</TableCell>
+              <TableCell>{details.montantTVA.toFixed(2)} €</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </>
+)}
               <Typography variant="h6">Total</Typography>
               <Typography>
                 Total (HTVA): {totals.subtotal.toFixed(2)} €

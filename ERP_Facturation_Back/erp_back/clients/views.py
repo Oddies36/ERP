@@ -9,6 +9,13 @@ def get_clients(request):
   serializer = ClientSerializer(clients, many=True)
 
   return Response(serializer.data, status=200)
+
+@api_view(['GET'])
+def get_client_details(request, id_client):
+  client = Client.objects.get(id=id_client)
+  serializer = ClientSerializer(client)
+
+  return Response(serializer.data, status=200)
   
 @api_view(['POST'])
 def new(request):

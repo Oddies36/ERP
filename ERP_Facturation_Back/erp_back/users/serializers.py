@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
+#Serializer qui va faire en sorte de mettre en forme les données pour la DB. Utilisé pour le login
 class LoginSerializer(serializers.Serializer):
   username = serializers.CharField(required=True,
                                    allow_blank=False,
@@ -19,6 +20,7 @@ class LoginSerializer(serializers.Serializer):
                                      "null": "Entrez votre mot de passe."
   })
 
+#Serializer qui va faire en sorte de mettre en forme les données pour la DB. Utilisé pour la création d'un nouveau user
 class UserSerializer(serializers.ModelSerializer):
   #Pour sécurité, on précise que le mot de passe est uniquement pour l'écriture et jamais comme lecture pour ne pas dévoiler les mdp hashé ou claire.
   password = serializers.CharField(write_only=True,
@@ -75,11 +77,13 @@ class UserSerializer(serializers.ModelSerializer):
     #Précise les fields dans User qu'on veut serialiser/déserialiser
     fields = ['username', 'email', 'password', 'first_name', 'last_name']
 
+  #Vérifie si le username existe déjà
   def validate_username(self, value):
     if User.objects.filter(username=value).exists():
       raise serializers.ValidationError("Le nom d'utilisateur existe déjà.")
     return value
 
+  #Assure que le mot de passe suit bien les règles
   def validate_password(self, value):
     if len(value) < 8:
       raise serializers.ValidationError("Mot de passe doit contenir au moin 8 caractères.")
@@ -91,6 +95,7 @@ class UserSerializer(serializers.ModelSerializer):
       raise serializers.ValidationError("Mot de passe doit contenir au moin une minuscule")
     return value
 
+  #Quand on fait .save() dans la view, le create() ici est executé
   def create(self, validated_data):
     user = User.objects.create_user(
       first_name = validated_data['first_name'],

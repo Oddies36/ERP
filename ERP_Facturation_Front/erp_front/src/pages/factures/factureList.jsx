@@ -46,6 +46,7 @@ const FactureList = () => {
         setFilteredFactures(response.data);
         setTotalItems(response.data.length);
         setCurrentFactures(response.data.slice(0, itemsPerPage));
+
         setLoading(false);
       } catch (err) {
         setError("Erreur pendant la récupération des factures.");
@@ -90,6 +91,11 @@ const FactureList = () => {
         valueA = new Date(a[field]);
         valueB = new Date(b[field]);
       }
+
+      if (field === "num_client") {
+        valueA = a.client.id;  // Extract the correct value
+        valueB = b.client.id;
+      }
   
       if (valueA < valueB) return newSortOrder === "asc" ? -1 : 1;
       if (valueA > valueB) return newSortOrder === "asc" ? 1 : -1;
@@ -115,17 +121,30 @@ const FactureList = () => {
       const numeroFacture = facture.numero_facture
         ? facture.numero_facture.toLowerCase()
         : "";
-      const clientNom = facture.client_nom
-        ? facture.client_nom.toLowerCase()
+      const clientNom = facture.client.nom
+        ? facture.client.nom.toLowerCase()
         : "";
+      const clientPrenom = facture.client.prenom
+      ? facture.client.prenom.toLowerCase()
+      : "";
       const dateCreation = facture.date_creation
         ? facture.date_creation.toLowerCase()
         : ""; // Assuming the date is a string like "2025-01-28"
+      const numeroClient = facture.client.id
+      ? String(facture.client.id)
+      : "";
+
+      const fullName = `${clientNom} ${clientPrenom}`;
+      const fullNameReverse = `${clientPrenom} ${clientNom}`;
   
       return (
         numeroFacture.includes(term) ||
         clientNom.includes(term) ||
-        dateCreation.includes(term)
+        clientPrenom.includes(term) ||
+        dateCreation.includes(term) ||
+        fullName.includes(term) ||
+        fullNameReverse.includes(term) ||
+        numeroClient.includes(term)
       );
     });
   
@@ -140,7 +159,7 @@ const FactureList = () => {
 
   return (
     <Layout>
-      <Container>
+      <Container maxWidth={false} sx={{ padding: "20px" }}>
         {loading ? (
           <Typography>Chargement...</Typography>
         ) : (
@@ -171,32 +190,37 @@ const FactureList = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>
-                      <Button onClick={() => handleSort("numero_facture")}>
+                      <Button onClick={() => handleSort("numero_facture")} sx={{padding: 0}}>
                         Numéro de facture <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("client_nom")}>
+                      <Button onClick={() => handleSort("client_nom")} sx={{padding: 0}}>
                         Client <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("date_creation")}>
+                      <Button onClick={() => handleSort("num_client")} sx={{padding: 0}}>
+                        Numéro client <SwapVertIcon />
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Button onClick={() => handleSort("date_creation")} sx={{padding: 0}}>
                         Date de création <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("prix_htva")}>
+                      <Button onClick={() => handleSort("prix_htva")} sx={{padding: 0}}>
                         Prix HTVA <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("prix_ttc")}>
+                      <Button onClick={() => handleSort("prix_ttc")} sx={{padding: 0}}>
                         Prix TTC <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("statut")}>
+                      <Button onClick={() => handleSort("statut")} sx={{padding: 0}}>
                         Statut <SwapVertIcon />
                       </Button>
                     </TableCell>
@@ -206,11 +230,14 @@ const FactureList = () => {
                 <TableBody>
                   {currentFactures.map((facture) => (
                     <TableRow key={facture.id}>
-                      <TableCell size="small">{facture.numero_facture}</TableCell>
-                      <TableCell size="small">{facture.client_nom || "N/A"}</TableCell>
+                      <TableCell size="small">
+                        <Link to={`/factures/${facture.numero_facture}/${facture.client.id}`}>{facture.numero_facture}</Link>
+                      </TableCell>
+                      <TableCell size="small">{facture.client.nom} {facture.client.prenom}</TableCell>
+                      <TableCell size="small">{facture.client.id}</TableCell>
                       <TableCell size="small">{facture.date_creation}</TableCell>
-                      <TableCell size="small">{facture.prix_htva}</TableCell>
-                      <TableCell size="small">{facture.prix_ttc}</TableCell>
+                      <TableCell size="small">{facture.prix_htva}€</TableCell>
+                      <TableCell size="small">{facture.prix_ttc}€</TableCell>
                       <TableCell size="small">{facture.statut}</TableCell>
                       <TableCell size="small">
                         <IconButton>

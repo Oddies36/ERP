@@ -137,7 +137,7 @@ const ClientList = () => {
 
   return (
     <Layout>
-      <Container>
+      <Container maxWidth={false} sx={{ padding: "20px" }}>
         {loading ? (
           <Typography>Loading...</Typography>
         ) : (
@@ -168,22 +168,22 @@ const ClientList = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>
-                      <Button onClick={() => handleSort("nom")}>
+                      <Button onClick={() => handleSort("nom")} sx={{padding: 0}}>
                         Nom <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("prenom")}>
+                      <Button onClick={() => handleSort("prenom")} sx={{padding: 0}}>
                         Prénom <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("email")}>
+                      <Button onClick={() => handleSort("email")} sx={{padding: 0}}>
                         Email <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("telephone")}>
+                      <Button onClick={() => handleSort("telephone")} sx={{padding: 0}}>
                         Téléphone <SwapVertIcon />
                       </Button>
                     </TableCell>

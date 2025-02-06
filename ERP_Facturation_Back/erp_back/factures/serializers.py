@@ -1,9 +1,17 @@
 from rest_framework import serializers
-from .models import Article, Facture
-from datetime import date
+from .models import Facture, DetailsFacture
+from articles.serializers import ArticleSerializer
+from clients.serializers import ClientSerializer
 
+#La syntaxe '__all__' vise tout les fields dans la table
 class FactureSerializer(serializers.ModelSerializer):
+    client = ClientSerializer()
     class Meta:
         model = Facture
-        fields = ['id', 'numero_facture', 'client', 'date_creation', 'date_echeance', 'prix_htva', 'prix_ttc', 'montant_tva', 'rappel1', 'rappel2', 'rappel3', 'statut', 'est_comptabilise']
+        fields = '__all__'
 
+class DetailsFactureSerializer(serializers.ModelSerializer):
+    article = ArticleSerializer()
+    class Meta:
+        model = DetailsFacture
+        fields = '__all__'

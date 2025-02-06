@@ -11,6 +11,7 @@ import ArticleList from './pages/articles/articleList';
 import NewArticle from './pages/articles/newArticle';
 import FactureList from './pages/factures/factureList';
 import NewFacture from './pages/factures/newFacture';
+import EditFacture from './pages/factures/editFacture';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/articles/nouveau" element={<ProtectedRoute><NewArticle /></ProtectedRoute>} />
         <Route path="/factures" element={<ProtectedRoute><FactureList /></ProtectedRoute>} />
         <Route path="/factures/nouveau" element={<ProtectedRoute><NewFacture /></ProtectedRoute>} />
+        <Route path="/factures/:numeroFacture/:clientID" element={<ProtectedRoute><EditFacture /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

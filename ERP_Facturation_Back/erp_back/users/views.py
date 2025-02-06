@@ -5,6 +5,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
 from .serializers import UserSerializer, LoginSerializer
 
+#api qui sera utilisé pour la connexion d'un user. Va également vérifier et gerer les token.
 @api_view(['POST'])
 def login_view(request):
   serializer = LoginSerializer(data=request.data)
@@ -19,7 +20,7 @@ def login_view(request):
       refresh = RefreshToken.for_user(user)
       return Response({
         "success": True,
-        "message": "Login successful",
+        "message": "Connexion réussi",
         "username": user.username,
         "refresh": str(refresh),
         "access": str(refresh.access_token),
@@ -35,6 +36,7 @@ def login_view(request):
           "errors": serializer.errors
       }, status=400)
   
+#api qui sera utilisé pour la création d'un user.
 @api_view(['POST'])
 def create_user(request):
   serializer = UserSerializer(data=request.data)
@@ -55,6 +57,7 @@ def create_user(request):
       "errors": serializer.errors
     }, status=400)
   
+#api qui va valider le token
 @api_view(['POST'])
 def validate_token(request):
 
