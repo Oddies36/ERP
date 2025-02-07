@@ -67,7 +67,7 @@ const Login = () => {
           {/* Logo */}
           <Box sx={{ marginBottom: "1.5rem" }}>
             <img
-              src="/images/logo.jpg" // Utilisation du chemin public
+              src="/images/logo.jpg"
               alt="ERP Logo"
               style={{
                 maxWidth: "150px",
@@ -97,7 +97,7 @@ const Login = () => {
             <Box sx={{ marginBottom: 2 }}>
               <TextField
                 fullWidth
-                label="Email or username"
+                label="Email ou user"
                 name="username"
                 value={credentials.username}
                 onChange={handleChange}
@@ -108,7 +108,7 @@ const Login = () => {
             <Box sx={{ marginBottom: 2 }}>
               <TextField
                 fullWidth
-                label="Password"
+                label="Mot de passe"
                 name="password"
                 type="password"
                 value={credentials.password}

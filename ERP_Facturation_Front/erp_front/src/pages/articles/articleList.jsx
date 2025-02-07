@@ -57,7 +57,7 @@ const ArticleList = () => {
         setCurrentArticles(response.data.slice(0, itemsPerPage));
         setLoading(false);
       } catch (err) {
-        setError("Failed to fetch articles.");
+        setError("Erreur lors de la recherche des articles.");
         setLoading(false);
       }
     };
@@ -95,6 +95,7 @@ const ArticleList = () => {
     );
   };
 
+  //Fonction qui gère la recherche d'un article
   const handleSearch = (event) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
@@ -102,7 +103,8 @@ const ArticleList = () => {
     const filtered = articles.filter(
       (item) =>
         item.article.toLowerCase().includes(term) ||
-        item.categorie_nom.toLowerCase().includes(term)
+        item.categorie_nom.toLowerCase().includes(term) ||
+        item.ean.toLowerCase().includes(term)
     );
 
     setFilteredArticles(filtered);
@@ -112,16 +114,19 @@ const ArticleList = () => {
     setCurrentPage(1);
   };
 
+  //Fonction qui ouvre le menu d'action pour une ligne
   const handleMenuOpen = (event, article) => {
     setAnchorEl(event.currentTarget);
     setSelectedArticle(article);
   };
 
+  //Fonction qui ferme le menu d'action pour une ligne
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedArticle(null);
   };
 
+  //Fonction qui nous laisse ajouter ou diminuer une quantité d'articles
   const handleAddQuantity = async () => {
     if (!quantity || isNaN(quantity) || quantity <= 0) {
       setError("Veuillez entrer une quantité valide.");
@@ -133,7 +138,6 @@ const ArticleList = () => {
         qty_stock: selectedArticle.qty_stock + parseInt(quantity),
       });
 
-      // Update local state to reflect the change
       setArticles((prevArticles) =>
         prevArticles.map((article) =>
           article.id === selectedArticle.id
@@ -164,6 +168,7 @@ const ArticleList = () => {
     }
   };
 
+  //Fonction pour ouvrir le dialogue (fenetre pour ajouter des articles)
   const handleDialogOpen = () => {
     setDialogOpen(true);
     setAnchorEl(null);
@@ -171,14 +176,14 @@ const ArticleList = () => {
 
   const handleDialogClose = () => {
     setDialogOpen(false);
-    setQuantity(""); // Reset quantity input
+    setQuantity("");
   };
 
   return (
     <Layout>
       <Container maxWidth={false} sx={{ padding: "20px" }}>
         {loading ? (
-          <Typography>Loading...</Typography>
+          <Typography>Chargement...</Typography>
         ) : (
           <Box sx={{ marginTop: 3 }}>
             <Box
@@ -188,11 +193,13 @@ const ArticleList = () => {
                 marginBottom: 2,
               }}
             >
+              {/* Barre de recherche */}
               <SearchBar
                 value={searchTerm}
                 onChange={handleSearch}
                 placeholder="Recherche des articles"
               />
+              {/* Bouton pour ajouter un article */}
               <Button
                 component={Link}
                 to="/articles/nouveau"
@@ -213,8 +220,13 @@ const ArticleList = () => {
                       </Button>
                     </TableCell>
                     <TableCell>
+                      <Button onClick={() => handleSort("ean")} sx={{padding: 0}}>
+                        EAN <SwapVertIcon />
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       <Button onClick={() => handleSort("qty_paquet")} sx={{padding: 0}}>
-                        Quantité dans le paquet <SwapVertIcon />
+                        Qty dans paquet <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
@@ -239,6 +251,7 @@ const ArticleList = () => {
                   {currentArticles.map((article) => (
                     <TableRow key={article.id}>
                       <TableCell size="small">{article.article}</TableCell>
+                      <TableCell size="small">{article.ean}</TableCell>
                       <TableCell size="small">
                         {article.qty_paquet || "N/A"}
                       </TableCell>
@@ -291,7 +304,7 @@ const ArticleList = () => {
           </Box>
         )}
       </Container>
-      {/* Dialog Box for Quantity Input */}
+      {/* Dialog pour ouvrir l'input de la quantité */}
       <Dialog open={dialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Ajouter une quantité</DialogTitle>
         <DialogContent>

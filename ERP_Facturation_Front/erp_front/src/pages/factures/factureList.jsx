@@ -86,15 +86,19 @@ const FactureList = () => {
       let valueA = a[field];
       let valueB = b[field];
   
-      // Parse date strings to Date objects if sorting by a date field
       if (field === "date_creation") {
         valueA = new Date(a[field]);
         valueB = new Date(b[field]);
       }
 
       if (field === "num_client") {
-        valueA = a.client.id;  // Extract the correct value
+        valueA = a.client.id;
         valueB = b.client.id;
+      }
+
+      if (field === "client_nom") {
+        valueA = a.client ? `${a.client.prenom} ${a.client.nom}`.toLowerCase() : "";
+        valueB = b.client ? `${b.client.prenom} ${b.client.nom}`.toLowerCase() : "";
       }
   
       if (valueA < valueB) return newSortOrder === "asc" ? -1 : 1;
@@ -129,7 +133,10 @@ const FactureList = () => {
       : "";
       const dateCreation = facture.date_creation
         ? facture.date_creation.toLowerCase()
-        : ""; // Assuming the date is a string like "2025-01-28"
+        : "";
+        const statut = facture.statut
+        ? facture.statut.toLowerCase()
+        : "";
       const numeroClient = facture.client.id
       ? String(facture.client.id)
       : "";
@@ -144,7 +151,8 @@ const FactureList = () => {
         dateCreation.includes(term) ||
         fullName.includes(term) ||
         fullNameReverse.includes(term) ||
-        numeroClient.includes(term)
+        numeroClient.includes(term) ||
+        statut.includes(term)
       );
     });
   

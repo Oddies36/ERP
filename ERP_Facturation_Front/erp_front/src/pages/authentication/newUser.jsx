@@ -53,7 +53,7 @@ const NewUser = () => {
   
           navigate("/login");
         } else {
-          console.error("Erruer:", response.data.message);
+          console.error("Erreur:", response.data.message);
           setError(response.data.errors);
           if (response.data.errors) {
             const firstError = Object.values(response.data.errors)[0][0];

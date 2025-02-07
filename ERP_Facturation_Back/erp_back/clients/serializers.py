@@ -32,7 +32,9 @@ class adresseSerializer(serializers.ModelSerializer):
   class Meta:
     model = Adresse
     fields = ['id', 'code_postal', 'rue', 'numero', 'boite', 'type_adresses']
-    
+
+
+# Serializer qui créé un nouveau client. Prend aussi les deux adresses (livraison et facturation) et va les lier au client
 class ClientSerializer(serializers.ModelSerializer):
     
     adresses = adresseSerializer(many=True)

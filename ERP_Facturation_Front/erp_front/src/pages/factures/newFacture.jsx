@@ -46,7 +46,12 @@ function NewFacture() {
   const [filteredArticles, setFilteredArticles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [basesImposables, setBasesImposables] = useState([]);
+  const [dateEcheance, setDateEcheance] = useState(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return today;
+  });
 
+  //Cherche la liste des clients
   useEffect(() => {
     const getClients = async () => {
       try {
@@ -60,7 +65,7 @@ function NewFacture() {
     getClients();
   }, []);
 
-  // Fetch addresses for the selected client
+  //Cherche l'adresse pour le client
   useEffect(() => {
     if (selectedClient) {
       const getClientAddresses = async () => {
@@ -79,7 +84,7 @@ function NewFacture() {
     }
   }, [selectedClient]);
 
-  // Fetch articles for the autocomplete when a client is selected
+  //Cherche les articles
   useEffect(() => {
     if (selectedClient) {
       const getArticles = async () => {
@@ -93,83 +98,80 @@ function NewFacture() {
       };
       getArticles();
     } else {
-      setAllArticles([]); // Clear articles if no client is selected
+      setAllArticles([]);
     }
   }, [selectedClient]);
 
-  // Calculate totals dynamically
+  //Calcul des totaux dynamiquement
   useEffect(() => {
-    const basesImposables = {}; // Object to store the taxable base per VAT rate
-    const tvaDetails = {}; // Object to store calculated TVA per rate
+    const basesImposables = {};
+    const tvaDetails = {};
     let totalTVA = new Decimal(0);
     let totalHTVA = new Decimal(0);
 
-    articles.forEach(article => {
-        const tauxTVA = Number(article.tva) || 0; // Ensure VAT rate is a number
-        const prixHTVA = Number(article.prix_htva) || 0; // Ensure HTVA is a number
-        const remise = Number(article.remise) || 0; // Ensure remise is a number
-        const quantity = Number(article.quantity) || 0; // Ensure quantity is a number
+    articles.forEach((article) => {
+      const tauxTVA = Number(article.tva) || 0;
+      const prixHTVA = Number(article.prix_htva) || 0;
+      const remise = Number(article.remise) || 0;
+      const quantity = Number(article.quantity) || 0;
 
-        if (!basesImposables[tauxTVA]) {
-            basesImposables[tauxTVA] = new Decimal(0);
-            tvaDetails[tauxTVA] = { baseHTVA: new Decimal(0), montantTVA: new Decimal(0) };
-        }
+      if (!basesImposables[tauxTVA]) {
+        basesImposables[tauxTVA] = new Decimal(0);
+        tvaDetails[tauxTVA] = {
+          baseHTVA: new Decimal(0),
+          montantTVA: new Decimal(0),
+        };
+      }
 
-        // ✅ Apply remise before calculations
-        const prixRemisé = Decimal(prixHTVA)
-            .times(Decimal(1).minus(Decimal(remise).div(100))) // Apply discount
-            .toDecimalPlaces(2);
+      //Calcul de la remise avant la TVA
+      const prixRemisé = Decimal(prixHTVA)
+        .times(Decimal(1).minus(Decimal(remise).div(100)))
+        .toDecimalPlaces(2);
 
-        // ✅ Compute total HTVA for this article after remise
-        const totalHTVAArticle = prixRemisé
-            .times(quantity)
-            .toDecimalPlaces(2);
+      //Calcule le total htva par article après la remise
+      const totalHTVAArticle = prixRemisé.times(quantity).toDecimalPlaces(2);
 
-        // ✅ Compute TVA per unit after remise
-        const tvaParUnite = prixRemisé
-            .times(tauxTVA)
-            .div(100)
-            .toDecimalPlaces(2);
+      //Calcul la TVA par article après la remise
+      const tvaParUnite = prixRemisé.times(tauxTVA).div(100).toDecimalPlaces(2);
 
-        // ✅ Compute total TVA for this article
-        const totalTVAArticle = tvaParUnite
-            .times(quantity)
-            .toDecimalPlaces(2);
+      //Calcul le total TVA pour l'article
+      const totalTVAArticle = tvaParUnite.times(quantity).toDecimalPlaces(2);
 
-        // ✅ Update taxable base and TVA amounts per VAT rate
-        basesImposables[tauxTVA] = basesImposables[tauxTVA].plus(totalHTVAArticle);
-        tvaDetails[tauxTVA].baseHTVA = basesImposables[tauxTVA];
-        tvaDetails[tauxTVA].montantTVA = tvaDetails[tauxTVA].montantTVA.plus(totalTVAArticle);
+      //Met à jour les bases imposables
+      basesImposables[tauxTVA] = basesImposables[tauxTVA].plus(totalHTVAArticle);
+      tvaDetails[tauxTVA].baseHTVA = basesImposables[tauxTVA];
+      tvaDetails[tauxTVA].montantTVA = tvaDetails[tauxTVA].montantTVA.plus(totalTVAArticle);
 
-        // ✅ Update overall totals
-        totalHTVA = totalHTVA.plus(totalHTVAArticle);
-        totalTVA = totalTVA.plus(totalTVAArticle);
+      //Met à jour les totaux globales
+      totalHTVA = totalHTVA.plus(totalHTVAArticle);
+      totalTVA = totalTVA.plus(totalTVAArticle);
     });
 
-    // Convert Decimal values to numbers before updating state
+    //Converti les nombres en number et met à jour le state totaux
     setTotals({
-        subtotal: totalHTVA.toDecimalPlaces(2).toNumber(),
-        tva: totalTVA.toDecimalPlaces(2).toNumber(),
-        total: totalHTVA.plus(totalTVA).toDecimalPlaces(2).toNumber(),
+      subtotal: totalHTVA.toDecimalPlaces(2).toNumber(),
+      tva: totalTVA.toDecimalPlaces(2).toNumber(),
+      total: totalHTVA.plus(totalTVA).toDecimalPlaces(2).toNumber(),
     });
 
-    // Convert basesImposables values to numbers before updating state
-    const formattedTVADetails = Object.keys(tvaDetails).reduce((acc, tauxTVA) => {
+    //Converti les bases
+    const formattedTVADetails = Object.keys(tvaDetails).reduce(
+      (acc, tauxTVA) => {
         acc[tauxTVA] = {
-            baseHTVA: tvaDetails[tauxTVA].baseHTVA.toDecimalPlaces(2).toNumber(),
-            montantTVA: tvaDetails[tauxTVA].montantTVA.toDecimalPlaces(2).toNumber(),
+          baseHTVA: tvaDetails[tauxTVA].baseHTVA.toDecimalPlaces(2).toNumber(),
+          montantTVA: tvaDetails[tauxTVA].montantTVA
+            .toDecimalPlaces(2)
+            .toNumber(),
         };
         return acc;
-    }, {});
+      },
+      {}
+    );
 
     setBasesImposables(formattedTVADetails);
-}, [articles]);
+  }, [articles]);
 
-  
-  
-  
-
-  // Handle Client Selection from Modal
+  //Gère la séléction du client
   const handleClientSelect = (client) => {
     setError("");
     setSelectedClient(client);
@@ -190,44 +192,46 @@ function NewFacture() {
       const tvaResponse = await api.get(
         `/articles/get-tva/${pays}/${article.categorie}/${selectedClient.tva_entreprise}/`
       );
+      console.log("tva: ", tvaResponse.data);
       return tvaResponse.data.tva;
     }
   };
 
+  //Gère l'ajout d'un article
   const handleAddArticle = async (article) => {
     if (article.qty_stock > 0) {
       setError("");
       const tva = await getTVAArticle(article);
-  
-      // Convert values to numbers
+
       const prixHTVA = Number(article.prix_htva);
       const tauxTVA = Number(tva);
-  
-      // ✅ Compute prixAvecTva immediately
+
+      //Calcul le prix avec TVA
       const prixAvecTva = Decimal(prixHTVA)
         .times(Decimal(1).plus(Decimal(tauxTVA).div(100)))
         .toDecimalPlaces(2)
         .toNumber();
-  
-      // ✅ Initialize total values as 0 since quantity is 0
+
+      //Crée la structure d'un article avec des valeurs par défaut
       const newArticle = {
         id: article.id,
         article: article.article,
         line_number: articles.length + 1,
-        quantity: 0, // Start with 0
+        quantity: 0,
         qty_stock: article.qty_stock,
-        prix_htva: prixHTVA, // Store as number
-        tva: tauxTVA, // Store as number
-        prixAvecTva, // ✅ Now calculated on add
+        qty_paquet: article.qty_paquet,
+        prix_htva: prixHTVA,
+        tva: tauxTVA,
+        prixAvecTva,
         totalHtva: 0,
         montantTva: 0,
         totalTtc: 0,
-        remise: 0
+        remise: 0,
       };
-  
-      // ✅ Update state with the new article
+
+      //Met à jour le state pour les articles
       setArticles((prevArticles) => [...prevArticles, newArticle]);
-  
+
       setArticleModalOpen(false);
     } else {
       setArticleModalOpen(false);
@@ -236,72 +240,74 @@ function NewFacture() {
       );
     }
   };
-  
 
   const handleRemoveArticle = (index) => {
-    setArticles(articles.filter((_, i) => i !== index));
+    setArticles((prev) =>
+      prev
+        .filter((_, i) => i !== index)
+        .map((item, newIndex) => ({ ...item, line_number: newIndex + 1 }))
+    );
   };
 
+  //Gère le changement de l'article qui a été ajouté à la liste
   const handleArticleChange = async (index, field, value) => {
     setError("");
     const updatedArticles = [...articles];
 
-
     if (field === "remise") {
-      if(value > 100){
+      if (value > 100) {
         updatedArticles[index][field] = 100;
-      } else if(value < 1){
-        updatedArticles[index][field] = 0;
-      } else{
-        updatedArticles[index][field] = value;
-      }
-    }
-  
-    if (field === "quantity") {
-      const currentArticle = updatedArticles[index];
-      
-      // Prevent exceeding stock limits
-      if (value > currentArticle.qty_stock) {
-        setError("La quantité choisie dépasse le nombre en stock");
-        updatedArticles[index][field] = currentArticle.qty_stock;
       } else if (value < 1) {
-        updatedArticles[index][field] = 0; // Minimum quantity = 0
+        updatedArticles[index][field] = 0;
       } else {
         updatedArticles[index][field] = value;
       }
     }
 
-    // Convert values to numbers before calculations
+    if (field === "quantity") {
+      const currentArticle = updatedArticles[index];
+
+      //Fait en sorte de ne pas pouvoir dépasser la limite du stock dispo
+      if (value > currentArticle.qty_stock) {
+        setError("La quantité choisie dépasse le nombre en stock");
+        updatedArticles[index][field] = currentArticle.qty_stock;
+      } else if (value < 1) {
+        updatedArticles[index][field] = 0;
+      } else {
+        updatedArticles[index][field] = value;
+      }
+    }
+
     const article = updatedArticles[index];
-    const prixHTVA = Number(article.prix_htva); // Convert from string to number
-    const tauxTVA = Number(article.tva); // Convert from string to number
+    const prixHTVA = Number(article.prix_htva);
+    const tauxTVA = Number(article.tva);
     const remise = Number(article.remise);
     if (!isNaN(prixHTVA) && !isNaN(tauxTVA)) {
-      // ✅ Apply remise before calculations
+      //Calcule la remise avant tout
       const prixRemisé = Decimal(prixHTVA)
-        .times(Decimal(1).minus(Decimal(remise).div(100))) // Apply discount
+        .times(Decimal(1).minus(Decimal(remise).div(100)))
         .toDecimalPlaces(2)
         .toNumber();
 
-      // ✅ Calculate total HTVA after remise
+      //Calcule le total HTVA après la remise
       const totalHTVA = Decimal(prixRemisé)
         .times(article.quantity)
         .toDecimalPlaces(2)
         .toNumber();
 
-      // ✅ Calculate TVA per unit based on discounted price
+      //Calcule la TVA par quantité basé sur le prix réduit
       const tvaParUnite = Decimal(prixRemisé)
         .times(tauxTVA)
         .div(100)
         .toDecimalPlaces(2);
 
-      // ✅ Calculate total TVA
+      //Calcule le total TVA
       const montantTVA = tvaParUnite
         .times(article.quantity)
         .toDecimalPlaces(2)
         .toNumber();
 
-      // ✅ Calculate total TTC
+      //Calcul le total TTC
       const totalTTC = Decimal(totalHTVA)
         .plus(montantTVA)
         .toDecimalPlaces(2)
@@ -309,7 +315,7 @@ function NewFacture() {
 
       updatedArticles[index] = {
         ...article,
-        prixRemisé, // Store the discounted unit price
+        prixRemisé,
         totalHtva: totalHTVA,
         montantTva: montantTVA,
         totalTtc: totalTTC,
@@ -317,13 +323,9 @@ function NewFacture() {
     }
 
     setArticles(updatedArticles);
-
   };
-  
-  
-  
-  
 
+  //Gère la recherche du client
   const handleSearch = (event) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
@@ -338,13 +340,14 @@ function NewFacture() {
         client.tva_entreprise,
         client.nom_entreprise,
       ]
-        .filter(Boolean) // Remove any undefined/null values
+        .filter(Boolean)
         .some((field) => field.toString().toLowerCase().includes(term))
     );
 
     setFilteredClients(filtered);
   };
 
+  //Gère la recherche de l'article
   const handleArticleSearch = (event) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
@@ -365,11 +368,12 @@ function NewFacture() {
       try {
         const payload = {
           client_id: selectedClient.id,
+          date_echeance: dateEcheance,
           articles: articles.map((article) => ({
             id: parseInt(article.id, 10),
             line_number: article.line_number,
             quantity: parseInt(article.quantity, 10),
-            remise: parseFloat(article.remise)
+            remise: parseFloat(article.remise),
           })),
         };
 
@@ -388,7 +392,7 @@ function NewFacture() {
           Nouvelle facture
         </Typography>
         <Box display="flex" mb={4} alignItems="flex-start" gap={2}>
-          {/* Client Selection */}
+          {/* Section client */}
           <Box
             sx={{
               display: "flex",
@@ -511,15 +515,16 @@ function NewFacture() {
                 {error}
               </Typography>
             )}
+
             <Typography variant="h6" gutterBottom>
               Articles
             </Typography>
             <Box mb={4}>
-              {articles.map((article, index) => (
-                <Grid container spacing={1} key={index} alignItems="center">
-                  <Grid item xs={1} sx={{ mb: 1 }}>
+            {articles.map((article, i) => (
+                <Grid container spacing={1} key={i} alignItems="center">
+                  <Grid item xs={3} sx={{ mb: 1 }}>
                     <Typography>
-                      {article.article} {article.qty_paquet}
+                      {article.article} {article.qty_paquet} (Stock: {article.qty_stock})
                     </Typography>
                   </Grid>
                   <Grid item xs={2} sx={{ mb: 1 }}>
@@ -528,24 +533,37 @@ function NewFacture() {
                       variant="outlined"
                       size="small"
                       type="number"
+
                       value={article.quantity}
                       onChange={(e) =>
-                        handleArticleChange(index, "quantity", e.target.value)
+                        handleArticleChange(i, "quantity", e.target.value)
                       }
                     />
                   </Grid>
-                  <Grid item xs={3} sx={{ mb: 1 }}>
+                  <Grid item xs={2} sx={{ mb: 1 }}>
                     <TextField
                       label="Remise (%)"
                       variant="outlined"
                       size="small"
                       type="number"
+
                       value={article.remise}
                       onChange={(e) =>
-                        handleArticleChange(index, "remise", e.target.value)
+                        handleArticleChange(i, "remise", e.target.value)
                       }
                     />
                   </Grid>
+
+                    <Grid item xs={2} sx={{ mb: 1 }}>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={() => handleRemoveArticle(i)}
+                      >
+                        Supprimer
+                      </Button>
+                    </Grid>
+
                 </Grid>
               ))}
             </Box>
@@ -694,7 +712,6 @@ function NewFacture() {
                 </thead>
                 <tbody>
                   {articles.map((article, index) => {
-
                     return (
                       <tr key={index}>
                         <td
@@ -776,43 +793,59 @@ function NewFacture() {
               </table>
             </Box>
 
-            {/* Totals */}
+            {/* Totaux */}
             <Box mt={4} sx={{ mb: 2 }}>
-            {Object.keys(basesImposables).length > 0 && (
-  <>
-    <Typography variant="h6" mt={4}>
-      Détails des bases imposables par taux de TVA
-    </Typography>
-    <TableContainer component={Paper} sx={{ mt: 2 }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Taux de TVA</TableCell>
-            <TableCell>Base Imposable (HTVA)</TableCell>
-            <TableCell>Montant de TVA</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {Object.entries(basesImposables).map(([tauxTVA, details]) => (
-            <TableRow key={tauxTVA}>
-              <TableCell>{tauxTVA} %</TableCell>
-              <TableCell>{details.baseHTVA.toFixed(2)} €</TableCell>
-              <TableCell>{details.montantTVA.toFixed(2)} €</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </>
-)}
-              <Typography variant="h6">Total</Typography>
+              {Object.keys(basesImposables).length > 0 && (
+                <>
+                  <Typography variant="h6" mt={4}>
+                    Détails des bases imposables par taux de TVA
+                  </Typography>
+                  <TableContainer component={Paper} sx={{ mt: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Taux de TVA</TableCell>
+                          <TableCell>Base Imposable (HTVA)</TableCell>
+                          <TableCell>Montant de TVA</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {Object.entries(basesImposables).map(
+                          ([tauxTVA, details]) => (
+                            <TableRow key={tauxTVA}>
+                              <TableCell>{tauxTVA} %</TableCell>
+                              <TableCell>
+                                {details.baseHTVA.toFixed(2)} €
+                              </TableCell>
+                              <TableCell>
+                                {details.montantTVA.toFixed(2)} €
+                              </TableCell>
+                            </TableRow>
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
+              )}
+              <Typography variant="h6" sx={{ mt: 2 }}>Total</Typography>
               <Typography>
-                Total (HTVA): {totals.subtotal.toFixed(2)} €
+                Total HTVA: {totals.subtotal.toFixed(2)} €
               </Typography>
               <Typography>TVA: {totals.tva.toFixed(2)} €</Typography>
               <Typography>
-                Total (avec TVA): {totals.total.toFixed(2)} €
+                Total TTC: {totals.total.toFixed(2)} €
               </Typography>
+            </Box>
+
+            {/* Date échéance */}
+            <Box display="flex" alignItems="center" gap={2} mb={3}>
+              <Typography>Date échéance</Typography>
+              <TextField
+                type="date"
+                value={dateEcheance}
+                onChange={(e) => setDateEcheance(e.target.value)}
+              />
             </Box>
             <Button
               type="submit"

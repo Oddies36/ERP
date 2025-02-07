@@ -50,49 +50,35 @@ const ClientList = () => {
         setLoading(false);
         setCurrentClients(response.data.slice(0, itemsPerPage));
       } catch (err) {
-        setError("Failed to fetch clients.");
+        setError("Erreur lors de la récuperation du client.");
         setLoading(false);
       }
     };
     getClients();
   }, []);
 
-  const handleDelete = async (id) => {
-    try {
-      await api.delete(`/clients/${id}/`);
-      const updatedClients = clients.filter((client) => client.id !== id);
-      setClients(updatedClients);
-
-      const updatedFilteredClients = filteredClients.filter(
-        (client) => client.id !== id
-      );
-      setFilteredClients(updatedFilteredClients);
-      setTotalItems(updatedFilteredClients.length);
-
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-      setCurrentClients(updatedFilteredClients.slice(startIndex, endIndex));
-    } catch (err) {
-      setError("Failed to delete the client.");
-    }
-  };
 
   const handleSort = (field) => {
-    const newSortOrder =
-      sortField === field && sortOrder === "asc" ? "desc" : "asc";
+    const newSortOrder = sortField === field && sortOrder === "asc" ? "desc" : "asc";
     setSortField(field);
     setSortOrder(newSortOrder);
-
+  
     const sortedClients = [...filteredClients].sort((a, b) => {
-      if (a[field] < b[field]) return newSortOrder === "asc" ? -1 : 1;
-      if (a[field] > b[field]) return newSortOrder === "asc" ? 1 : -1;
+      let valueA = a[field] ?? "";
+      let valueB = b[field] ?? "";
+  
+      if (field === "tva_entreprise") {
+        valueA = parseInt(valueA.replace(/\D/g, ""), 10) || 0;
+        valueB = parseInt(valueB.replace(/\D/g, ""), 10) || 0;
+      }
+  
+      if (valueA < valueB) return newSortOrder === "asc" ? -1 : 1;
+      if (valueA > valueB) return newSortOrder === "asc" ? 1 : -1;
       return 0;
     });
+  
     setFilteredClients(sortedClients);
-
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setCurrentClients(sortedClients.slice(startIndex, endIndex));
+    setCurrentClients(sortedClients.slice(0, itemsPerPage));
   };
 
   const handlePageChange = (event, page) => {
@@ -105,18 +91,21 @@ const ClientList = () => {
   const handleSearch = (event) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
-
-    const filtered = clients.filter(
-      (client) =>
-        client.nom.toLowerCase().includes(term) ||
-        client.prenom.toLowerCase().includes(term) ||
-        client.email.toLowerCase().includes(term) ||
-        client.telephone.toLowerCase().includes(term)
+  
+    const filtered = clients.filter((client) =>
+      [
+        client.nom,
+        client.prenom,
+        client.email,
+        client.telephone,
+        client.tva_entreprise,
+      ]
+        .filter(Boolean)
+        .some((field) => field.toString().toLowerCase().includes(term))
     );
-
+  
     setFilteredClients(filtered);
     setTotalItems(filtered.length);
-
     setCurrentClients(filtered.slice(0, itemsPerPage));
     setCurrentPage(1);
   };
@@ -139,7 +128,7 @@ const ClientList = () => {
     <Layout>
       <Container maxWidth={false} sx={{ padding: "20px" }}>
         {loading ? (
-          <Typography>Loading...</Typography>
+          <Typography>Chargement...</Typography>
         ) : (
           <Box sx={{ marginTop: 3 }}>
             <Box
@@ -183,6 +172,11 @@ const ClientList = () => {
                       </Button>
                     </TableCell>
                     <TableCell>
+                      <Button onClick={() => handleSort("tva_entreprise")} sx={{padding: 0}}>
+                        Numéro TVA <SwapVertIcon />
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       <Button onClick={() => handleSort("telephone")} sx={{padding: 0}}>
                         Téléphone <SwapVertIcon />
                       </Button>
@@ -196,6 +190,7 @@ const ClientList = () => {
                       <TableCell size="small">{client.nom}</TableCell>
                       <TableCell size="small">{client.prenom}</TableCell>
                       <TableCell size="small">{client.email}</TableCell>
+                      <TableCell size="small">{client.tva_entreprise}</TableCell>
                       <TableCell size="small">{client.telephone}</TableCell>
                       <TableCell size="small">
                         <IconButton
@@ -220,14 +215,6 @@ const ClientList = () => {
                             }}
                           >
                             Modification
-                          </MenuItem>
-                          <MenuItem
-                            onClick={() => {
-                              handleDelete(selectedClient.id);
-                              handleMenuClose();
-                            }}
-                          >
-                            Supprimer
                           </MenuItem>
                         </Menu>
                       </TableCell>

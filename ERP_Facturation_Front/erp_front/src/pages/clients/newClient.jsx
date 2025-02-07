@@ -74,11 +74,7 @@ const NewClient = () => {
         pays_facturation: prevClient.pays_livraison,
       }),
     }));
-  };
-
-  const handleNavigation = (path) => {
-    console.log(`Navigating to ${path}`);
-  };  
+  }; 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,20 +83,19 @@ const NewClient = () => {
     console.log(dataToSend);
     try {
       const response = await api.post("/clients/new/", dataToSend);
-      console.log("Client created:", response.data);
       navigate("/clients");
     } catch (err) {
       if (err.response) {
         const errorData = err.response.data;
         if (errorData.Client) {
-          setError(`Erreur: ${errorData.Client}`); // Custom error message based on the backend's response
+          setError(`Erreur: ${errorData.Client}`);
         } else {
-          setError("An unexpected error occurred. Please try again.");
+          setError("Erreur.");
         }
       } else {
-        setError("Failed to connect to the server. Please check your network connection.");
+        setError("Erreur lors de la connexion au serveur.");
       }
-      console.error("Error creating client:", err);
+      console.error("Erreur lors de la création du client:", err);
     }
   };
 
@@ -115,7 +110,7 @@ const NewClient = () => {
     
     adresses: [
       {
-        type_adresses: [ // Use a list here
+        type_adresses: [
           { type_adresse: "Livraison" }
         ],
         rue: client.rue_livraison,
@@ -133,7 +128,7 @@ const NewClient = () => {
         },
       },
       {
-        type_adresses: [ // Use a list here
+        type_adresses: [
           { type_adresse: "Facturation" }
         ],
         rue: client.rue_facturation,
@@ -168,7 +163,7 @@ const NewClient = () => {
 
         <form onSubmit={handleSubmit}>
           <Grid container spacing={4}>
-            {/* Client Information */}
+            {/* Information du client */}
             <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Informations du client
@@ -227,7 +222,7 @@ const NewClient = () => {
               />
             </Grid>
 
-            {/* Address Information */}
+            {/* Adresse */}
             <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h6" gutterBottom>
                 Adresse de livraison
@@ -372,7 +367,7 @@ const NewClient = () => {
             label="L'adresse de facturation est la même que l'adresse de livraison"
           />
 
-          {/* Submit Button */}
+          {/* Bouton créer */}
           <Button
             type="submit"
             variant="contained"

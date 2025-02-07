@@ -29,10 +29,6 @@ import api from "../../api/axiosConfig";
 function EditFacture() {
   const { numeroFacture } = useParams();
   const navigate = useNavigate();
-
-  // --------------------
-  // 1) Invoice & Clients
-  // --------------------
   const [facture, setFacture] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -40,27 +36,11 @@ function EditFacture() {
     facturation: null,
     livraison: null,
   });
-
-  // ---------------------------
-  // 2) The line items
-  // ---------------------------
-  // "articles" = raw data (quantity, remise%).
-  // "computedArticles" = derived fields (prixAvecTva, totalHtva, etc.)
-  const [articles, setArticles] = useState([]); 
-  const [computedArticles, setComputedArticles] = useState([]); 
-
-  // For adding new lines
+  const [articles, setArticles] = useState([]);
+  const [computedArticles, setComputedArticles] = useState([]);
   const [allArticles, setAllArticles] = useState([]);
-
-  // ---------------------------
-  // 3) Totals & Calculation
-  // ---------------------------
   const [totals, setTotals] = useState({ subtotal: 0, tva: 0, total: 0 });
   const [basesImposables, setBasesImposables] = useState({});
-
-  // ---------------------------
-  // 4) UI and state
-  // ---------------------------
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [articleModalOpen, setArticleModalOpen] = useState(false);
   const [filteredClients, setFilteredClients] = useState([]);
@@ -68,56 +48,48 @@ function EditFacture() {
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [articleSearchTerm, setArticleSearchTerm] = useState("");
   const [error, setError] = useState("");
-
-  // If "statut" is "nouveau", we can edit
+  const [dateEcheance, setDateEcheance] = useState("");
   const [editable, setEditable] = useState(false);
 
-  // ---------------------------
-  // 5) Load Facture + Details
-  // ---------------------------
+  //Commence par chercher les informations
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1) Fetch all clients
+        //Les clients
         const clientsRes = await api.get("/clients/get-clients/");
         setClients(clientsRes.data);
         setFilteredClients(clientsRes.data);
 
-        // 2) Fetch the facture data
+        //Les factures
         const factureRes = await api.get(`/factures/facture/${numeroFacture}/`);
         setFacture(factureRes.data);
 
-        // 3) Check if we can edit
+        //Vérifie si on peut modifier la facture sur base du statut de la facture
         setEditable(factureRes.data.statut === "nouveau");
 
-        // 4) Identify the client
+        setDateEcheance(factureRes.data.date_echeance || "");
+
+        //Cherche le client dans la liste des clients et met à jour selectedClient
         const clientMatch = clientsRes.data.find(
           (c) => c.id === factureRes.data.client?.id
         );
         setSelectedClient(clientMatch || null);
 
-        // 5) Fetch all articles (to add new lines)
+        //Cherche tout les articles
         const articleRes = await api.get("/articles/get-articles/");
         setAllArticles(articleRes.data);
         setFilteredArticles(articleRes.data);
 
-        // 6) Fetch the detailsFacture lines
+        //Cherche les detailsfacture
         const detailsRes = await api.get(
           `/factures/facture/${numeroFacture}/details`
         );
 
-        // Convert them to your "raw" front-end shape:
-        // Django fields:
-        //   - numero_ligne, quantite, prix_article_htva, tva, montant_promo, etc.
         const loadedLines = detailsRes.data.map((detail, idx) => {
           const quantite = Number(detail.quantite) || 0;
           const prixHTVA = Number(detail.prix_article_htva) || 0;
           const tva = Number(detail.tva) || 0;
           const promo = Number(detail.montant_promo) || 0;
-
-          console.log("bizarre tout ça", promo);
-
-          // Convert absolute discount => % remise (assuming 'promo' is that discount)
           let remisePct = promo;
 
           return {
@@ -128,7 +100,6 @@ function EditFacture() {
             qty_stock: detail.article.qty_stock,
             prix_htva: prixHTVA,
             tva,
-            // Our discount in the UI is a percent
             remise: remisePct,
           };
         });
@@ -144,9 +115,7 @@ function EditFacture() {
     fetchData();
   }, [numeroFacture]);
 
-  // ---------------------------
-  // 6) Fetch Client Addresses
-  // ---------------------------
+  //Cherche les adresses du client
   useEffect(() => {
     const fetchAddresses = async () => {
       if (!selectedClient) {
@@ -163,9 +132,7 @@ function EditFacture() {
     fetchAddresses();
   }, [selectedClient]);
 
-  // -----------------------------------------------------------------
-  // 7) Compute "computedArticles" & Totals from "articles"
-  // -----------------------------------------------------------------
+  //Calcule dynamiquement
   useEffect(() => {
     let totalHTVA = new Decimal(0);
     let totalTVA = new Decimal(0);
@@ -177,38 +144,38 @@ function EditFacture() {
       const tvaRate = new Decimal(line.tva || 0);
       const remisePct = new Decimal(line.remise || 0);
 
-      // 1) Compute the discounted unit price => partial round
+      //Applique la remise sur le prix HTVA
       const prixRemise = prixHTVA
         .mul(Decimal(1).minus(remisePct.div(100)))
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // 2) total HTVA => discounted unit * qty => partial round
+      //Calcule le total HTVA pour cette ligne
       const totalHTVALine = prixRemise
         .mul(qty)
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // 3) TVA per unit => discounted unit * (tvaRate/100) => partial round
+      //Calcule la TVA unitaire en fonction du prix remisé
       const tvaParUnite = prixRemise
         .mul(tvaRate)
         .div(100)
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // 4) total TVA => tvaParUnite * qty => partial round
+      //Calcule le total TVA pour la quantité sélectionnée
       const totalTVAArticle = tvaParUnite
         .mul(qty)
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // 5) line TTC => totalHTVALine + totalTVAArticle => partial round
+      //Calcule le total TTC de la ligne
       const lineTTC = totalHTVALine
         .plus(totalTVAArticle)
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // For "prixAvecTva": keep the *undiscounted* unit TTC ignoring discount
+      //Pour "prixAvecTva", on garde le prix unitaire TTC *avant* remise
       const originalUnitTTC = prixHTVA
         .plus(prixHTVA.mul(tvaRate).div(100))
         .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 
-      // Update the line summary
+      //Mise à jour de la ligne avec les nouvelles valeurs calculées
       const updatedLine = {
         ...line,
         prixAvecTva: originalUnitTTC.toNumber(),
@@ -217,12 +184,17 @@ function EditFacture() {
         totalTtc: lineTTC.toNumber(),
       };
 
-      // Accumulate in tvaDetails
+      //Ajoute les montants aux bases TVA correspondantes
       if (!tvaDetails[tvaRate]) {
-        tvaDetails[tvaRate] = { baseHTVA: new Decimal(0), montantTVA: new Decimal(0) };
+        tvaDetails[tvaRate] = {
+          baseHTVA: new Decimal(0),
+          montantTVA: new Decimal(0),
+        };
       }
-      tvaDetails[tvaRate].baseHTVA = tvaDetails[tvaRate].baseHTVA.plus(totalHTVALine);
-      tvaDetails[tvaRate].montantTVA = tvaDetails[tvaRate].montantTVA.plus(totalTVAArticle);
+      tvaDetails[tvaRate].baseHTVA =
+        tvaDetails[tvaRate].baseHTVA.plus(totalHTVALine);
+      tvaDetails[tvaRate].montantTVA =
+        tvaDetails[tvaRate].montantTVA.plus(totalTVAArticle);
 
       totalHTVA = totalHTVA.plus(totalHTVALine);
       totalTVA = totalTVA.plus(totalTVAArticle);
@@ -232,23 +204,26 @@ function EditFacture() {
 
     setComputedArticles(updated);
 
-    // final totals => partial round
+    //Calcule les totaux finaux et arrondit à 2 décimales
     const newSubtotal = totalHTVA
       .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
       .toNumber();
-    const newTVA = totalTVA.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber();
+    const newTVA = totalTVA
+      .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+      .toNumber();
     const newTotal = totalHTVA
       .plus(totalTVA)
       .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
       .toNumber();
 
+    //Met à jour les totaux globaux
     setTotals({
       subtotal: newSubtotal,
       tva: newTVA,
       total: newTotal,
     });
 
-    // Build the basesImposables object
+    //Construit l'objet contenant les bases imposables par taux de TVA
     const newBases = {};
     for (let rate in tvaDetails) {
       newBases[rate] = {
@@ -263,20 +238,22 @@ function EditFacture() {
     setBasesImposables(newBases);
   }, [articles]);
 
-  // -----------------------------------------
-  // 8) Client selection & search
-  // -----------------------------------------
+  // On est ici
+
+  //Ouvre le modal pour le choix du client
   const handleOpenClientModal = () => {
     if (!editable) return;
     setClientModalOpen(true);
   };
 
+  //Gestion pour le choix du client
   const handleClientSelect = (client) => {
     setSelectedClient(client);
     setClientModalOpen(false);
     setError("");
   };
 
+  //Gère la recherche du client
   const handleClientSearch = (e) => {
     const term = e.target.value.toLowerCase();
     setClientSearchTerm(term);
@@ -296,9 +273,7 @@ function EditFacture() {
     setFilteredClients(filtered);
   };
 
-  // -----------------------------------------
-  // 9) Add an article
-  // -----------------------------------------
+  //Ouvre le modal pour pour le choix des articles
   const handleOpenArticleModal = () => {
     if (!editable) return;
     if (!selectedClient) {
@@ -308,6 +283,7 @@ function EditFacture() {
     setArticleModalOpen(true);
   };
 
+  //Gère la recherche pour l'article
   const handleArticleSearch = (e) => {
     const term = e.target.value.toLowerCase();
     setArticleSearchTerm(term);
@@ -319,6 +295,7 @@ function EditFacture() {
     setFilteredArticles(filtered);
   };
 
+  //Cherche la TVA d'un article en fonciton du pays du client et la catégorie de l'article
   const getTVAArticle = async (article) => {
     const factAddress = clientAddresses?.facturation?.[0];
     if (!factAddress) return 0;
@@ -331,6 +308,7 @@ function EditFacture() {
     return res.data?.tva || 0;
   };
 
+  //Gère l'ajout d'un article
   const handleAddArticle = async (article) => {
     setError("");
     if (article.qty_stock <= 0) {
@@ -361,14 +339,13 @@ function EditFacture() {
     }
   };
 
-  // -----------------------------------------
-  // 10) Remove or Edit a line
-  // -----------------------------------------
+  //Gère la supression d'un article
   const handleRemoveArticle = (index) => {
     if (!editable) return;
     setArticles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  //Gère la modification d'un article choisi
   const handleArticleChange = (index, field, value) => {
     if (!editable) return;
     setError("");
@@ -397,9 +374,7 @@ function EditFacture() {
     });
   };
 
-  // -----------------------------------------
-  // 11) Submit / Update Facture
-  // -----------------------------------------
+  //Gère la validation de la modification
   const handleSubmit = async () => {
     if (!facture) return;
     if (totals.total <= 0) {
@@ -408,22 +383,20 @@ function EditFacture() {
     }
 
     try {
-      // If your backend wants 'montant_promo' as an absolute discount,
-      // we convert the percent remise back to an absolute discount.
       const detailsPayload = computedArticles.map((line) => {
-        const originalUnitHT = line.prix_htva || 0; 
+        const originalUnitHT = line.prix_htva || 0;
         const qty = line.quantity || 0;
-        // total line original HT before discount
+      
         const lineHTOriginal = originalUnitHT * qty;
 
-        // total discount in absolute
+       
         const promo = lineHTOriginal * (line.remise / 100);
 
         return {
           article_id: line.id,
           numero_ligne: line.line_number,
           quantite: line.quantity,
-          prix_article_htva: line.totalHtva / (line.quantity || 1), 
+          prix_article_htva: line.totalHtva / (line.quantity || 1),
           prix_article_ttc: line.totalTtc / (line.quantity || 1),
           tva: line.tva,
           montant_tva: line.montantTva,
@@ -433,14 +406,13 @@ function EditFacture() {
 
       const payload = {
         client_id: selectedClient?.id,
-        // rename "details" -> "articles"
+        date_echeance: dateEcheance,
         articles: computedArticles.map((line) => ({
-          id: line.id,            // rename "article_id" -> "id"
-          quantity: line.quantity, // rename "quantite" -> "quantity"
+          id: line.id,
+          quantity: line.quantity,
           remise: line.remise,
           line_number: line.line_number,
-          // ...
-        }))
+        })),
       };
 
       await api.put(`/factures/facture/edit/${numeroFacture}/`, payload);
@@ -451,23 +423,24 @@ function EditFacture() {
     }
   };
 
-  // -----------------------------------------
-  // (New) 12) "Comptabiliser" => sets status to "comptabilisé"
-  // -----------------------------------------
+  //Met le statut d'une facture en comptabilisé ce qui fait qu'elle ne sera plus modifiable
   const handleComptabiliser = async () => {
-    if (!facture) return; // no invoice loaded
-  
+    if (!facture) return;
+
     try {
-      // Minimal payload: only the "statut" field
+      //On envoie juste les fields qu'on veut modifier
       const payload = {
         statut: "comptabilisé",
         est_comptabilise: true,
       };
-  
-      // PUT or PATCH to your existing update endpoint
-      await api.put(`/factures/facture/update-statut/${numeroFacture}/`, payload);
-  
-      // Locally set the invoice status + lock the UI
+
+      //J'ai mis PUT mais pour faire mieux on utilise PATCH pour des modifications partielles
+      await api.put(
+        `/factures/facture/update-statut/${numeroFacture}/`,
+        payload
+      );
+
+      //On met à jour le statut dans cette instance pour directement appliquer le changement
       setFacture((prev) => prev && { ...prev, statut: "comptabilisé" });
       setEditable(false);
       setError("");
@@ -477,14 +450,11 @@ function EditFacture() {
     }
   };
 
-  // -----------------------------------------
-  // RENDER
-  // -----------------------------------------
   return (
     <Layout>
       <Container maxWidth={false} sx={{ padding: "20px" }}>
-        <Typography variant="h4" gutterBottom>
-          Éditer la facture #{numeroFacture}
+        <Typography variant="h3" gutterBottom>
+          Éditer la facture {numeroFacture}
         </Typography>
 
         {error && (
@@ -493,9 +463,12 @@ function EditFacture() {
           </Typography>
         )}
 
-        {/* 1) Select or Display Client */}
+        {/* Bouton choix du client et affichage du client choisi */}
         <Box display="flex" mb={4} alignItems="flex-start" gap={2}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <Typography sx={{ fontWeight: "bold", fontSize: "35px" }}>
+              {selectedClient?.nom} {selectedClient?.prenom}
+            </Typography>
             <Button
               variant="contained"
               onClick={handleOpenClientModal}
@@ -503,12 +476,9 @@ function EditFacture() {
             >
               Sélectionner un client
             </Button>
-            <Typography sx={{ fontWeight: "bold", fontSize: "35px" }}>
-              {selectedClient?.nom} {selectedClient?.prenom}
-            </Typography>
           </Box>
 
-          {/* Client Dialog */}
+          {/* La fenetre dialog du choix client */}
           <Dialog
             open={clientModalOpen}
             onClose={() => setClientModalOpen(false)}
@@ -560,7 +530,7 @@ function EditFacture() {
             </DialogActions>
           </Dialog>
 
-          {/* Addresses */}
+          {/* Les adresses du client */}
           {clientAddresses.facturation?.length > 0 && (
             <Card sx={{ flex: 1 }}>
               <CardContent>
@@ -596,17 +566,15 @@ function EditFacture() {
                   {clientAddresses.livraison[0]?.code_postal?.ville?.ville}
                 </Typography>
                 <Typography>
-                  {
-                    clientAddresses.livraison[0]?.code_postal?.ville?.pays
-                      ?.pays
-                  }
+                  {clientAddresses.livraison[0]?.code_postal?.ville?.pays?.pays}
                 </Typography>
               </CardContent>
             </Card>
           )}
         </Box>
 
-        {/* 2) Articles */}
+        {/* Les articles */}
+        {/* Affiche le contenu si le client a bien été séléctionné. Pour l'edit, il est d'office séléctionné */}
         {selectedClient && (
           <>
             <Typography variant="h6" gutterBottom>
@@ -661,7 +629,7 @@ function EditFacture() {
               ))}
             </Box>
 
-            {/* 2a) Dialog for adding article */}
+            {/* La fenetre dialog pour les articles */}
             <Dialog
               open={articleModalOpen}
               onClose={() => setArticleModalOpen(false)}
@@ -713,13 +681,15 @@ function EditFacture() {
               </DialogActions>
             </Dialog>
 
+            {/* Bouton pour ajouter un article */}
+            {/* Si editable est true, on pourra modifier. Si pas, c'est que la facture est comptabilisé et editable en false */}
             {editable && (
               <Button variant="outlined" onClick={handleOpenArticleModal}>
                 Ajouter un article
               </Button>
             )}
 
-            {/* 3) Résumé des articles */}
+            {/* Résumé des articles */}
             <Typography variant="h6" mt={4}>
               Résumé des articles
             </Typography>
@@ -833,7 +803,7 @@ function EditFacture() {
               </table>
             </Box>
 
-            {/* 4) Totals + Bases Imposables */}
+            {/* Totaux + Bases imposables */}
             <Box mt={4} sx={{ mb: 2 }}>
               {Object.keys(basesImposables).length > 0 && (
                 <>
@@ -854,7 +824,9 @@ function EditFacture() {
                           <TableRow key={rate}>
                             <TableCell>{rate} %</TableCell>
                             <TableCell>{vals.baseHTVA.toFixed(2)} €</TableCell>
-                            <TableCell>{vals.montantTVA.toFixed(2)} €</TableCell>
+                            <TableCell>
+                              {vals.montantTVA.toFixed(2)} €
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -863,15 +835,38 @@ function EditFacture() {
                 </>
               )}
 
-              <Typography variant="h6">Total</Typography>
+              <Typography variant="h6" sx={{ mt: 2 }}>Total</Typography>
               <Typography>
-                Total (HTVA): {totals.subtotal.toFixed(2)} €
+                Total HTVA: {totals.subtotal.toFixed(2)} €
               </Typography>
               <Typography>TVA: {totals.tva.toFixed(2)} €</Typography>
-              <Typography>Total (TTC): {totals.total.toFixed(2)} €</Typography>
+              <Typography>Total TTC: {totals.total.toFixed(2)} €</Typography>
             </Box>
 
-            {/* If editable, show both Save & Comptabiliser */}
+            {/* Les dates */}
+            <Box display="flex" flexDirection="column" gap={2} mb={3}>
+              <Box display="flex" alignItems="center" gap={2}>
+                <TextField
+                  label="Date émission"
+                  type="date"
+                  value={facture.date_creation}
+                  onChange={(e) => setDateEcheance(e.target.value)}
+                  disabled={true}
+                />
+              </Box>
+
+              <Box display="flex" alignItems="center" gap={2}>
+                <TextField
+                  label="Date échéance"
+                  type="date"
+                  value={dateEcheance}
+                  onChange={(e) => setDateEcheance(e.target.value)}
+                  disabled={!editable}
+                />
+              </Box>
+            </Box>
+
+            {/* Si on peut éditer, montre les boutons pour modifier et comptabiliser. Sinon c'est caché */}
             {editable && (
               <>
                 <Button
@@ -882,8 +877,6 @@ function EditFacture() {
                 >
                   Enregistrer la facture
                 </Button>
-
-                {/* (New) Comptabiliser button */}
                 <Button
                   variant="contained"
                   color="secondary"

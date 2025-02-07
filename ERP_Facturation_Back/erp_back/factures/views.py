@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404
 
 import traceback
 
-
 #api qui créé une nouvelle facture et fait également les calculs des prix en backend
 @api_view(['POST'])
 def new_facture(request):
@@ -111,12 +110,12 @@ def new_facture(request):
 
         #Avant de créer les detailsfacture, on doit créer la facture même et on insère les totaux déjà calculés
         #Par défaut, la date d'écheance est la date de la création de la facture
-        date_echeance = datetime.now().date()
+        date_echeance_str = data.get('date_echeance')
+        date_echeance = datetime.strptime(date_echeance_str, "%Y-%m-%d").date()
         rappel1 = date_echeance + timedelta(days=7)
         rappel2 = rappel1 + timedelta(days=7)
         rappel3 = rappel2 + timedelta(days=7)
 
-        print("j'arrive ici 1")
 
         #Création de la facture
         facture = Facture.objects.create(
@@ -132,7 +131,6 @@ def new_facture(request):
             est_comptabilise=False,
         )
 
-        print("j'arrive ici 2")
 
         #On va créer les detailsfacture
         #On refait une boucle sur les articles en tenant compte de l'index
@@ -182,7 +180,6 @@ def new_facture(request):
         })
 
     except Exception as e:
-        print("Erreur lors de la création de la facture")
         print(traceback.format_exc())
         return Response({"error": str(e)}, status=500)
 
@@ -246,6 +243,20 @@ def edit_facture(request, numero_facture):
         billing_address = Adresse.objects.filter(clients=client, type_adresses=billing_type).first()
         if not billing_address:
             return Response({"error": "Pas d'adresse de facturation trouvé pour ce client."}, status=404)
+        
+
+
+        # Handle date_echeance
+        date_echeance_str = data.get('date_echeance')  # Expected format: "YYYY-MM-DD"
+        date_echeance = datetime.strptime(date_echeance_str, "%Y-%m-%d").date()
+        
+
+        # Compute reminder dates
+        rappel1 = date_echeance + timedelta(days=7)
+        rappel2 = rappel1 + timedelta(days=7)
+        rappel3 = rappel2 + timedelta(days=7)
+
+
 
         #On va remettre les articles qu'on a déjà dans notre facture en stock. Après on va les remettre en fonction de la facture sauvegardé
         old_lines = DetailsFacture.objects.filter(facture=facture)
@@ -333,6 +344,10 @@ def edit_facture(request, numero_facture):
                 prix_total_htva=total_htva_item
             )
 
+        facture.date_echeance = date_echeance
+        facture.rappel1 = rappel1
+        facture.rappel2 = rappel2
+        facture.rappel3 = rappel3
         facture.prix_htva = prix_htva_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         facture.montant_tva = montant_tva_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         facture.prix_ttc = prix_ttc_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -353,4 +368,5 @@ def edit_facture(request, numero_facture):
         })
 
     except Exception as e:
+
         return Response({"error": str(e)}, status=500)

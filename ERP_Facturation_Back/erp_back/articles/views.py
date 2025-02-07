@@ -22,6 +22,7 @@ def get_articles(request):
 # api qui va écrire un article dans la DB
 @api_view(['POST'])
 def add_article(request):
+
   serializer = ArticleSerializer(data=request.data)
 
   if serializer.is_valid():
@@ -48,7 +49,8 @@ def get_tva(request, pays, categorie, tva_entreprise):
   categorie = Categorie.objects.get(id=categorie)
   tva = TVA_Categorie_Pays.objects.get(pays=pays, categorie=categorie)
 
-  if tva_entreprise and pays.pays != "Belgique":
+
+  if tva_entreprise not in [None, "", "None", "null"] and pays.pays != "Belgique":
     tva.tva = '0.00'
     
   serializer = TVACategoriePaysSerializer(tva)

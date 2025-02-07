@@ -140,7 +140,7 @@ const NewArticle = () => {
                   fullWidth
                   label="Prix HTVA (€)"
                   name="prix_htva"
-                  type="text" // Changed to text
+                  type="text"
                   value={articleData.prix_htva}
                   onChange={handleChange}
                   required
@@ -213,7 +213,7 @@ const NewArticle = () => {
                 />
               </Grid>
 
-              {/* Alcohol Percentage and Volume */}
+              {/* Pourcentage alc et volume */}
               <Grid size={6}>
                 <TextField
                   fullWidth
@@ -245,7 +245,7 @@ const NewArticle = () => {
                 />
               </Grid>
 
-              {/* Weight */}
+              {/* Poids */}
               <Grid size={6}>
                 <TextField
                   fullWidth
@@ -257,7 +257,7 @@ const NewArticle = () => {
                 />
               </Grid>
 
-              {/* Submit Button */}
+              {/* Bouton ajouter */}
               <Grid size={6}>
                 <Button
                   type="submit"
