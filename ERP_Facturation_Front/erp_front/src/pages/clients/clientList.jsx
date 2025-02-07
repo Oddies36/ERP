@@ -15,6 +15,12 @@ import {
   Menu,
   MenuItem,
   IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Card,
+  CardContent,
+  DialogActions,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { Link, useNavigate } from "react-router-dom";
@@ -38,6 +44,11 @@ const ClientList = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const itemsPerPage = 7;
+  const [clientAddresses, setClientAddresses] = useState({
+    facturation: null,
+    livraison: null,
+  });
+  const [dialogOpen, setDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,26 +68,26 @@ const ClientList = () => {
     getClients();
   }, []);
 
-
   const handleSort = (field) => {
-    const newSortOrder = sortField === field && sortOrder === "asc" ? "desc" : "asc";
+    const newSortOrder =
+      sortField === field && sortOrder === "asc" ? "desc" : "asc";
     setSortField(field);
     setSortOrder(newSortOrder);
-  
+
     const sortedClients = [...filteredClients].sort((a, b) => {
       let valueA = a[field] ?? "";
       let valueB = b[field] ?? "";
-  
+
       if (field === "tva_entreprise") {
         valueA = parseInt(valueA.replace(/\D/g, ""), 10) || 0;
         valueB = parseInt(valueB.replace(/\D/g, ""), 10) || 0;
       }
-  
+
       if (valueA < valueB) return newSortOrder === "asc" ? -1 : 1;
       if (valueA > valueB) return newSortOrder === "asc" ? 1 : -1;
       return 0;
     });
-  
+
     setFilteredClients(sortedClients);
     setCurrentClients(sortedClients.slice(0, itemsPerPage));
   };
@@ -88,10 +99,29 @@ const ClientList = () => {
     setCurrentClients(filteredClients.slice(startIndex, endIndex));
   };
 
+  const handleOpenDialog = async (client) => {
+    setSelectedClient(client);
+    setDialogOpen(true);
+
+    try {
+      const res = await api.get(`/clients/${client.id}/addresses/`);
+      setClientAddresses(res.data);
+    } catch (err) {
+      console.error("Erreur lors de la récupération des adresses:", err);
+      setClientAddresses({ facturation: null, livraison: null });
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedClient(null);
+    setClientAddresses({ facturation: null, livraison: null });
+  };
+
   const handleSearch = (event) => {
     const term = event.target.value.toLowerCase();
     setSearchTerm(term);
-  
+
     const filtered = clients.filter((client) =>
       [
         client.nom,
@@ -103,7 +133,7 @@ const ClientList = () => {
         .filter(Boolean)
         .some((field) => field.toString().toLowerCase().includes(term))
     );
-  
+
     setFilteredClients(filtered);
     setTotalItems(filtered.length);
     setCurrentClients(filtered.slice(0, itemsPerPage));
@@ -157,27 +187,42 @@ const ClientList = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>
-                      <Button onClick={() => handleSort("nom")} sx={{padding: 0}}>
+                      <Button
+                        onClick={() => handleSort("nom")}
+                        sx={{ padding: 0 }}
+                      >
                         Nom <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("prenom")} sx={{padding: 0}}>
+                      <Button
+                        onClick={() => handleSort("prenom")}
+                        sx={{ padding: 0 }}
+                      >
                         Prénom <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("email")} sx={{padding: 0}}>
+                      <Button
+                        onClick={() => handleSort("email")}
+                        sx={{ padding: 0 }}
+                      >
                         Email <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("tva_entreprise")} sx={{padding: 0}}>
+                      <Button
+                        onClick={() => handleSort("tva_entreprise")}
+                        sx={{ padding: 0 }}
+                      >
                         Numéro TVA <SwapVertIcon />
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Button onClick={() => handleSort("telephone")} sx={{padding: 0}}>
+                      <Button
+                        onClick={() => handleSort("telephone")}
+                        sx={{ padding: 0 }}
+                      >
                         Téléphone <SwapVertIcon />
                       </Button>
                     </TableCell>
@@ -187,10 +232,22 @@ const ClientList = () => {
                 <TableBody>
                   {currentClients.map((client) => (
                     <TableRow key={client.id}>
-                      <TableCell size="small">{client.nom}</TableCell>
+                      <TableCell
+                        size="small"
+                        onClick={() => handleOpenDialog(client)}
+                        sx={{
+                          cursor: "pointer",
+                          color: "blue",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {client.nom}
+                      </TableCell>
                       <TableCell size="small">{client.prenom}</TableCell>
                       <TableCell size="small">{client.email}</TableCell>
-                      <TableCell size="small">{client.tva_entreprise}</TableCell>
+                      <TableCell size="small">
+                        {client.tva_entreprise}
+                      </TableCell>
                       <TableCell size="small">{client.telephone}</TableCell>
                       <TableCell size="small">
                         <IconButton
@@ -243,6 +300,72 @@ const ClientList = () => {
           </Box>
         )}
       </Container>
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md">
+        <DialogTitle>Détails du client</DialogTitle>
+        <DialogContent>
+          <Typography variant="h6">
+            {selectedClient?.nom} {selectedClient?.prenom}
+          </Typography>
+          <Typography>Email: {selectedClient?.email}</Typography>
+          <Typography>Téléphone: {selectedClient?.telephone}</Typography>
+          <Typography>
+            Entreprise: {selectedClient?.nom_entreprise || "N/A"}
+          </Typography>
+          <Typography>
+            TVA: {selectedClient?.tva_entreprise || "N/A"}
+          </Typography>
+
+          {/* Adresses du client */}
+          <Box display="flex" gap={2} mt={3}>
+            {clientAddresses.facturation?.length > 0 && (
+              <Card sx={{ flex: 1 }}>
+                <CardContent>
+                  <Typography variant="h6">Adresse de facturation</Typography>
+                  <Typography>
+                    {clientAddresses.facturation[0]?.rue}{" "}
+                    {clientAddresses.facturation[0]?.numero}
+                  </Typography>
+                  <Typography>
+                    {clientAddresses.facturation[0]?.code_postal?.cp}{" "}
+                    {clientAddresses.facturation[0]?.code_postal?.ville?.ville}
+                  </Typography>
+                  <Typography>
+                    {
+                      clientAddresses.facturation[0]?.code_postal?.ville?.pays
+                        ?.pays
+                    }
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+
+            {clientAddresses.livraison?.length > 0 && (
+              <Card sx={{ flex: 1 }}>
+                <CardContent>
+                  <Typography variant="h6">Adresse de livraison</Typography>
+                  <Typography>
+                    {clientAddresses.livraison[0]?.rue}{" "}
+                    {clientAddresses.livraison[0]?.numero}
+                  </Typography>
+                  <Typography>
+                    {clientAddresses.livraison[0]?.code_postal?.cp}{" "}
+                    {clientAddresses.livraison[0]?.code_postal?.ville?.ville}
+                  </Typography>
+                  <Typography>
+                    {
+                      clientAddresses.livraison[0]?.code_postal?.ville?.pays
+                        ?.pays
+                    }
+                  </Typography>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };
